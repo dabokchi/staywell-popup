@@ -492,6 +492,9 @@
       </div>
       <div class="chips" id="publicChips"></div>
       <div class="legend-bar" id="legendBar"></div>
+      <div class="search-row" style="margin-bottom:10px;">
+        <input type="text" id="publicSearch" placeholder="등록된 둥지 검색 (예: 시립도서관, 조용한, 창전동)" oninput="renderPublic()" />
+      </div>
       <div id="viewMap"></div>
       <div class="nest-list" id="publicList"></div>
     </div>
@@ -740,6 +743,14 @@
     if (publicCatFilter !== "전체") {
       filtered = filtered.filter(x => decodeReason(x.reason).catId === publicCatFilter);
     }
+    const kw = (document.getElementById('publicSearch')?.value || '').trim().replace(/\s+/g, '').toLowerCase();
+    if (kw) {
+      filtered = filtered.filter(x => {
+        const dec = decodeReason(x.reason);
+        const hay = [x.placeName, x.area, x.region, dec.text, x.nick].join(' ').replace(/\s+/g, '').toLowerCase();
+        return hay.includes(kw);
+      });
+    }
     document.getElementById('publicCount').textContent = filtered.length;
 
     const groups = groupByPlace(filtered);
@@ -967,27 +978,36 @@
     box.innerHTML = '<div class="sr-item">검색 중...</div>';
 
     if (kakaoReady && kakaoPlaces) {
+      const c = map.getCenter();
       kakaoPlaces.keywordSearch(q, (data, status) => {
-        if (status === kakao.maps.services.Status.OK && data.length) {
-          box.innerHTML = data.slice(0, 10).map(it => {
-            const addr = it.road_address_name || it.address_name || '';
-            const cat = it.category_group_name ? ` · ${it.category_group_name}` : '';
-            return `
-              <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)}, ${JSON.stringify(it.category_group_name || "")})'>
-                <strong>${escapeHtml(it.place_name)}</strong><span class="sr-sub">${escapeHtml(cat)}</span>
-                <div class="sr-sub">${escapeHtml(addr)}</div>
-              </div>
-            `;
-          }).join('');
-        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
-          box.innerHTML = '<div class="sr-item">검색 결과가 없어요. 지도를 직접 눌러 찍어주세요!</div>';
-        } else {
-          fallbackNominatimSearch(q, box);
+        if (status === kakao.maps.services.Status.ZERO_RESULT) {
+          kakaoPlaces.keywordSearch(q, (gData, gStatus) => handleKakaoResult(gData, gStatus, q, box));
+          return;
         }
-      });
+        handleKakaoResult(data, status, q, box);
+      }, { location: new kakao.maps.LatLng(c.lat, c.lng), radius: 20000 });
       return;
     }
     fallbackNominatimSearch(q, box);
+  }
+
+  function handleKakaoResult(data, status, q, box) {
+    if (status === kakao.maps.services.Status.OK && data.length) {
+      box.innerHTML = data.slice(0, 10).map(it => {
+        const addr = it.road_address_name || it.address_name || '';
+        const cat = it.category_group_name ? ` · ${it.category_group_name}` : '';
+        return `
+          <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)}, ${JSON.stringify(it.category_group_name || "")})'>
+            <strong>${escapeHtml(it.place_name)}</strong><span class="sr-sub">${escapeHtml(cat)}</span>
+            <div class="sr-sub">${escapeHtml(addr)}</div>
+          </div>
+        `;
+      }).join('');
+    } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+      box.innerHTML = '<div class="sr-item">검색 결과가 없어요. 지도를 직접 눌러 찍어주세요!</div>';
+    } else {
+      fallbackNominatimSearch(q, box);
+    }
   }
 
   async function fallbackNominatimSearch(q, box) {
