@@ -588,8 +588,8 @@
     const badge = cnt > 1
       ? `<span style="position:absolute;top:-4px;right:-4px;background:#D07D3E;color:#fff;font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 6px;border:1.5px solid #fff;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.25);">${cnt}</span>`
       : '';
-    return `<div style="position:relative;width:46px;height:46px;filter:drop-shadow(0 2px 4px rgba(40,25,10,0.32));">
-      <img src="${src}" alt="" style="width:46px;height:46px;display:block;object-fit:contain;" />${badge}
+    return `<div style="position:relative;width:36px;height:36px;filter:drop-shadow(0 2px 4px rgba(40,25,10,0.32));">
+      <img src="${src}" alt="" style="width:36px;height:36px;display:block;object-fit:contain;" />${badge}
     </div>`;
   }
   function nestPinSvg(color, cnt) {
@@ -792,8 +792,8 @@
       const nestIcon = L.divIcon({
         className: 'custom-nest-pin',
         html: nestPinImg(latestDec.catId, cnt),
-        iconSize: [46, 46],
-        iconAnchor: [23, 30]
+        iconSize: [36, 36],
+        iconAnchor: [18, 22]
       });
 
       if (!isNaN(g.lat) && !isNaN(g.lng)) {
