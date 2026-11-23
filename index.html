@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>잠시 살아도 잘 살도록 · 둥지와 철새</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FAF6EC;
+      --card: #FFFFFF;
+      --green: #245943;
+      --green-light: #E8F2EA;
+      --brown: #4A3520;
+      --muted: #7C6A56;
+      --border: #E2D9C5;
+      --accent: #D07D3E;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--brown);
+      line-height: 1.55;
+      padding-bottom: 60px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px; }
+    .hero {
+      background: linear-gradient(135deg, #FFFDF7 0%, #F5ECDA 100%);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 22px;
+      text-align: center;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(74, 53, 32, 0.05);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--green);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      letter-spacing: 0.3px;
+    }
+    .hero h1 {
+      font-family: 'Gowun Batang', serif;
+      font-size: 28px;
+      color: var(--brown);
+      margin-bottom: 8px;
+    }
+    .hero p { font-size: 14.5px; color: var(--muted); }
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+      text-align: left;
+    }
+    .concept-box {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+    .concept-box strong { display: block; color: var(--green); margin-bottom: 3px; font-size: 13.5px; }
+    .card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 16px rgba(74, 53, 32, 0.04);
+    }
+    .sec-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 14.5px;
+      font-family: inherit;
+      background: #FFFDF9;
+      color: var(--brown);
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--green); background: #fff; }
+    .btn {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .btn:active { opacity: 0.85; }
+    .btn-sub { background: var(--accent); width: 100%; padding: 14px; font-size: 16px; margin-top: 8px; }
+    #searchResults {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      margin-bottom: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .sr-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid #F2ECE0;
+      cursor: pointer;
+      font-size: 13.5px;
+    }
+    .sr-item:last-child { border-bottom: none; }
+    .sr-item:hover { background: var(--green-light); }
+    .sr-sub { font-size: 12px; color: var(--muted); }
+    #map {
+      width: 100%;
+      height: 300px;
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      margin-bottom: 12px;
+      z-index: 1;
+    }
+    .picked-info {
+      background: var(--green-light);
+      border-radius: 12px;
+      padding: 10px 13px;
+      font-size: 13px;
+      color: var(--green);
+      margin-bottom: 14px;
+      display: none;
+    }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: 13.5px; font-weight: 700; margin-bottom: 6px; }
+    .req { color: #C94A38; }
+
+    /* Nest Post-it Live Preview */
+    .preview-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px 0 6px;
+    }
+    .nest-circle {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #FFFBF0 63%, #B88B56 66%, #8C6234 86%, #6B4722 100%);
+      border: 3px solid #6B4722;
+      box-shadow: 0 8px 20px rgba(74, 53, 32, 0.16);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 34px;
+      text-align: center;
+      position: relative;
+    }
+    .nest-place {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--brown);
+      border-bottom: 1.5px dashed #B8A890;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+      width: 100%;
+      word-break: keep-all;
+    }
+    .nest-reason {
+      font-size: 12.5px;
+      color: #5C4A34;
+      line-height: 1.45;
+      word-break: keep-all;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .nest-nick {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .toast {
+      display: none;
+      background: #245943;
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-top: 12px;
+      font-size: 14px;
+      text-align: center;
+    }
+    @media (max-width: 520px) {
+      .concept-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <span class="badge">1일 오프라인 팝업 · 둥지와 철새</span>
+    <h1>잠시 살아도 잘 살도록</h1>
+    <p>내가 잘 아는 동네의 최애 장소를 지도 위 작은 ‘둥지’로 남겨주세요</p>
+    <div class="concept-grid">
+      <div class="concept-box">
+        <strong>🪺 둥지지기 (로컬)</strong>
+        동네 맛집, 산책길, 아지트를 지도에 둥지로 소개해요
+      </div>
+      <div class="concept-box">
+        <strong>🐦 철새 (이주 청년)</strong>
+        새로운 동네의 둥지를 엿보고 마음에 드는 곳에 스티커를 붙여요
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">1. 지도에서 장소 찾기</div>
+    <div class="search-row">
+      <input type="text" id="q" placeholder="장소나 동네 이름 검색 (예: 이천 설봉공원, 홍대)" />
+      <button class="btn" type="button" onclick="searchPlace()">검색</button>
+    </div>
+    <div id="searchResults"></div>
+    <div id="map"></div>
+    <div class="picked-info" id="pickedInfo"></div>
+
+    <div class="field">
+      <label>권역 선택 <span class="req">*</span></label>
+      <select id="region">
+        <option value="이천시">이천시</option>
+        <option value="서울">서울</option>
+        <option value="인천">인천</option>
+        <option value="경기">경기</option>
+        <option value="강원">강원</option>
+        <option value="충청">충청</option>
+        <option value="전라">전라</option>
+        <option value="경상">경상</option>
+        <option value="제주">제주</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>동네 / 상세 위치 <span class="req">*</span></label>
+      <input type="text" id="area" placeholder="지도에서 찍거나 직접 입력 (예: 이천시 창전동)" oninput="updatePreview()" />
+    </div>
+
+    <div class="field">
+      <label>최애 장소 이름 <span class="req">*</span></label>
+      <input type="text" id="placeName" placeholder="예: 설봉공원 산책길" oninput="updatePreview()" />
+    </div>
+
+    <div class="field">
+      <label>추천 이유 <span class="req">*</span></label>
+      <textarea id="reason" rows="3" placeholder="이곳을 추천하는 이유를 한두 줄로 적어주세요!" oninput="updatePreview()"></textarea>
+    </div>
+
+    <div class="field">
+      <label>닉네임 (선택)</label>
+      <input type="text" id="nick" placeholder="예: 익명의 둥지지기" oninput="updatePreview()" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">2. 내 둥지 포스트잇 미리보기</div>
+    <div class="preview-wrap">
+      <div class="nest-circle">
+        <div class="nest-place" id="pvPlace">장소를 입력해 주세요</div>
+        <div class="nest-reason" id="pvReason">추천 이유가 여기에 표시됩니다</div>
+        <div class="nest-nick" id="pvNick"></div>
+      </div>
+    </div>
+    <button class="btn btn-sub" type="button" onclick="submitForm()">🪺 내 둥지 남기기</button>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // 여기에 Google Apps Script Web App URL을 넣으면 시트에 자동 저장됩니다.
+  const SUBMIT_ENDPOINT = "";
+
+  const map = L.map('map').setView([37.272, 127.435], 11); // 기본 중심: 이천시
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  let marker = null;
+
+  function setPin(lat, lng, labelText) {
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng]).addTo(map);
+    map.setView([lat, lng], 15);
+    const info = document.getElementById('pickedInfo');
+    info.style.display = 'block';
+    info.textContent = `📍 선택된 위치: ${labelText || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`;
+  }
+
+  function guessRegion(addr) {
+    if (!addr) return;
+    if (addr.includes('이천')) return '이천시';
+    if (addr.includes('서울')) return '서울';
+    if (addr.includes('인천')) return '인천';
+    if (addr.includes('경기')) return '경기';
+    if (addr.includes('강원')) return '강원';
+    if (addr.includes('충청') || addr.includes('대전') || addr.includes('세종')) return '충청';
+    if (addr.includes('전라') || addr.includes('광주')) return '전라';
+    if (addr.includes('경상') || addr.includes('부산') || addr.includes('대구') || addr.includes('울산')) return '경상';
+    if (addr.includes('제주')) return '제주';
+    return null;
+  }
+
+  map.on('click', async (e) => {
+    const { lat, lng } = e.latlng;
+    setPin(lat, lng);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ko`);
+      const data = await res.json();
+      const disp = data.display_name || '';
+      const r = guessRegion(disp);
+      if (r) document.getElementById('region').value = r;
+      const addrObj = data.address || {};
+      const shortArea = [addrObj.city || addrObj.county || addrObj.province, addrObj.borough || addrObj.suburb || addrObj.town || addrObj.village].filter(Boolean).join(' ');
+      if (shortArea) document.getElementById('area').value = shortArea;
+      setPin(lat, lng, shortArea || disp);
+      updatePreview();
+    } catch (_) {}
+  });
+
+  async function searchPlace() {
+    const q = document.getElementById('q').value.trim();
+    if (!q) return;
+    const box = document.getElementById('searchResults');
+    box.style.display = 'block';
+    box.innerHTML = '<div class="sr-item">검색 중...</div>';
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=kr&limit=5&accept-language=ko`);
+      const list = await res.json();
+      if (!list.length) {
+        box.innerHTML = '<div class="sr-item">검색 결과가 없어요. 지도를 직접 눌러 찍어주세요!</div>';
+        return;
+      }
+      box.innerHTML = list.map((it, i) => `
+        <div class="sr-item" onclick='pickResult(${it.lat}, ${it.lon}, ${JSON.stringify(it.name || q)}, ${JSON.stringify(it.display_name)})'>
+          <strong>${it.name || q}</strong>
+          <div class="sr-sub">${it.display_name}</div>
+        </div>
+      `).join('');
+    } catch (e) {
+      box.innerHTML = '<div class="sr-item">검색 연결에 실패했어요. 지도를 직접 탭해 주세요.</div>';
+    }
+  }
+
+  function pickResult(lat, lon, name, fullAddr) {
+    document.getElementById('searchResults').style.display = 'none';
+    setPin(parseFloat(lat), parseFloat(lon), name);
+    const r = guessRegion(fullAddr);
+    if (r) document.getElementById('region').value = r;
+    if (!document.getElementById('placeName').value) document.getElementById('placeName').value = name;
+    document.getElementById('area').value = fullAddr.split(',').slice(0, 3).join(' ').trim();
+    updatePreview();
+  }
+
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') searchPlace();
+  });
+
+  function updatePreview() {
+    const p = document.getElementById('placeName').value.trim();
+    const r = document.getElementById('reason').value.trim();
+    const n = document.getElementById('nick').value.trim();
+    document.getElementById('pvPlace').textContent = p || '장소를 입력해 주세요';
+    document.getElementById('pvReason').textContent = r || '추천 이유가 여기에 표시됩니다';
+    document.getElementById('pvNick').textContent = n ? `by. ${n}` : '';
+  }
+
+  async function submitForm() {
+    const region = document.getElementById('region').value;
+    const area = document.getElementById('area').value.trim();
+    const placeName = document.getElementById('placeName').value.trim();
+    const reason = document.getElementById('reason').value.trim();
+    const nick = document.getElementById('nick').value.trim() || '익명의 둥지지기';
+
+    if (!area || !placeName || !reason) {
+      alert('동네, 장소 이름, 추천 이유를 모두 입력해 주세요!');
+      return;
+    }
+
+    const payload = {
+      region, area, placeName, reason, nick,
+      lat: marker ? marker.getLatLng().lat : '',
+      lng: marker ? marker.getLatLng().lng : '',
+      createdAt: new Date().toISOString()
+    };
+
+    const toast = document.getElementById('toast');
+    if (SUBMIT_ENDPOINT) {
+      try {
+        await fetch(SUBMIT_ENDPOINT, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (_) {}
+    }
+    toast.style.display = 'block';
+    toast.innerHTML = `✅ <strong>${placeName}</strong> 둥지가 기록되었어요!<br/>소중한 동네 이야기를 나눠주셔서 감사합니다.`;
+  }
+</script>
+</body>
+</html>
