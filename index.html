@@ -406,6 +406,7 @@
     <span class="badge">드림이룸 페스타 · 나만의 아지트 지도</span>
     <h1>잠시 살아도 잘 살도록</h1>
     <p>내가 잘 아는 동네의 최애 장소를 지도 위 작은 ‘둥지’로 남겨주세요</p>
+    <button type="button" class="btn btn-outline" style="margin-top:12px;border-radius:999px;font-size:12.5px;padding:6px 14px;" onclick="openIntroModal()">🪺 ‘둥지와 철새’가 뭐예요?</button>
   </div>
 
   <div class="tabs">
@@ -1091,8 +1092,39 @@
 
   renderCatButtons();
   updatePreview();
+
+  function openIntroModal() {
+    document.getElementById('introModal').classList.add('show');
+  }
+  function closeIntroModal() {
+    document.getElementById('introModal').classList.remove('show');
+    try { localStorage.setItem('staywell_intro_seen', '1'); } catch (_) {}
+  }
+  try {
+    if (!localStorage.getItem('staywell_intro_seen')) {
+      setTimeout(openIntroModal, 250);
+    }
+  } catch (_) {}
+
   loadNests();
 </script>
+
+
+<div class="modal-backdrop" id="introModal">
+  <div class="modal-box" style="text-align:left;max-width:410px;">
+    <div style="text-align:center;font-size:34px;margin-bottom:4px;">🐦 🪺</div>
+    <h3 style="text-align:center;margin-bottom:12px;">잠시 살아도 잘 살도록</h3>
+    <div style="background:#FAF6EC;border-radius:14px;padding:12px 14px;margin-bottom:10px;">
+      <div style="font-weight:700;font-size:13.5px;color:#245943;margin-bottom:3px;">🐦 철새는 우리들이에요</div>
+      <div style="font-size:13px;color:#4A3520;line-height:1.5;">학업, 취업, 이직 등으로 한 동네에 잠시 머무는 우리들의 모습이에요. 잠깐 머물다 떠나더라도 그 시간만큼은 잘 살기를 바라는 마음을 담았어요.</div>
+    </div>
+    <div style="background:#FAF6EC;border-radius:14px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:13.5px;color:#D07D3E;margin-bottom:3px;">🪺 둥지는 나만의 아지트예요</div>
+      <div style="font-size:13px;color:#4A3520;line-height:1.5;">내가 잘 아는 동네의 최애 장소를 ‘둥지’로 남겨주세요. 내가 남긴 둥지가 다른 철새에게 따뜻한 쉼터가 되고, 우리도 서로의 둥지를 보며 낯선 동네를 여행할 수 있어요.</div>
+    </div>
+    <button class="btn" style="width:100%;padding:13px;font-size:15px;" onclick="closeIntroModal()">좋아요, 내 둥지 남기러 가기</button>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="doneModal">
   <div class="modal-box">
