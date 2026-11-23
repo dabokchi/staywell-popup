@@ -382,7 +382,21 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-weight: 600;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--brown);
+      transition: all 0.14s;
+    }
+    .legend-item.active {
+      background: var(--green);
+      color: #fff;
+      border-color: var(--green);
     }
   </style>
 </head>
@@ -579,11 +593,19 @@
         <span class="egg-dot" style="background:${c.color};"></span>${c.label}
       </button>
     `).join('');
-    document.getElementById('legendBar').innerHTML = CATEGORIES.map(c => `
-      <span class="legend-item">${eggSvg(c.color, 13)} ${c.label}</span>
+    const catOpts = [{ id: "전체", label: "전체 분류", color: null }, ...CATEGORIES];
+    document.getElementById('legendBar').innerHTML = catOpts.map(c => `
+      <button type="button" class="legend-item ${publicCatFilter === c.id ? 'active' : ''}" onclick="setPublicCatFilter('${c.id}')">
+        ${c.color ? eggSvg(c.color, 13) : '🥚'} ${c.label}
+      </button>
     `).join('');
   }
 
+  function setPublicCatFilter(catId) {
+    publicCatFilter = catId;
+    renderCatButtons();
+    renderPublic();
+  }
   function selectCat(id) {
     selectedCat = id;
     renderCatButtons();
@@ -591,6 +613,7 @@
   }
 
   let publicFilter = "전체";
+  let publicCatFilter = "전체";
   let adminFilter = "전체";
   let isAdmin = false;
 
@@ -703,7 +726,10 @@
 
   function renderPublic() {
     renderChips('publicChips', publicFilter, 'setPublicFilter');
-    const filtered = publicFilter === "전체" ? allNests : allNests.filter(x => x.region === publicFilter);
+    let filtered = publicFilter === "전체" ? allNests : allNests.filter(x => x.region === publicFilter);
+    if (publicCatFilter !== "전체") {
+      filtered = filtered.filter(x => decodeReason(x.reason).catId === publicCatFilter);
+    }
     document.getElementById('publicCount').textContent = filtered.length;
 
     const groups = groupByPlace(filtered);
