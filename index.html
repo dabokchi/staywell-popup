@@ -275,6 +275,62 @@
       color: #7A5420;
       margin-bottom: 12px;
     }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(34, 24, 14, 0.52);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-box {
+      background: #FFFDF8;
+      border: 2px solid var(--border);
+      border-radius: 22px;
+      max-width: 390px;
+      width: 100%;
+      padding: 26px 20px 20px;
+      text-align: center;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+      animation: popIn 0.18s ease-out;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-icon { font-size: 42px; margin-bottom: 8px; }
+    .modal-box h3 { font-size: 19px; color: var(--green); margin-bottom: 8px; }
+    .modal-box p { font-size: 14px; color: var(--muted); margin-bottom: 18px; }
+    .modal-actions { display: grid; gap: 8px; }
+    .btn-ghost { background: #F4EFE4; color: var(--brown); }
+
+    /* Grouped reasons */
+    .reason-stack { margin-top: 8px; display: grid; gap: 6px; }
+    .reason-bubble {
+      background: #FAF6EC;
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: #4A3520;
+    }
+    .reason-bubble small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .count-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -490,48 +546,99 @@
     renderAdmin();
   }
 
+  function groupByPlace(items) {
+    const groups = [];
+    items.forEach(it => {
+      const normName = String(it.placeName || '').replace(/\s+/g, '').toLowerCase();
+      const lat = parseFloat(it.lat);
+      const lng = parseFloat(it.lng);
+      let found = groups.find(g => {
+        if (g.normName && normName && g.normName === normName) return true;
+        if (!isNaN(lat) && !isNaN(lng) && !isNaN(g.lat) && !isNaN(g.lng)) {
+          const dist = Math.hypot(lat - g.lat, lng - g.lng);
+          return dist < 0.0007 && normName === g.normName;
+        }
+        return false;
+      });
+      if (found) {
+        found.entries.push(it);
+      } else {
+        groups.push({
+          normName,
+          region: it.region,
+          area: it.area,
+          placeName: it.placeName,
+          lat,
+          lng,
+          entries: [it]
+        });
+      }
+    });
+    return groups;
+  }
+
   function renderPublic() {
     renderChips('publicChips', publicFilter, 'setPublicFilter');
     const filtered = publicFilter === "전체" ? allNests : allNests.filter(x => x.region === publicFilter);
     document.getElementById('publicCount').textContent = filtered.length;
 
+    const groups = groupByPlace(filtered);
     viewLayer.clearLayers();
-    const nestIcon = L.divIcon({
-      className: 'custom-nest-pin',
-      html: '<div style="font-size:24px; line-height:1; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">🪺</div>',
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
-    });
 
-    filtered.forEach(it => {
-      if (it.lat && it.lng) {
-        const m = L.marker([parseFloat(it.lat), parseFloat(it.lng)], { icon: nestIcon }).addTo(viewLayer);
+    groups.forEach(g => {
+      const cnt = g.entries.length;
+      const badgeHtml = cnt > 1
+        ? `<span style="position:absolute;top:-5px;right:-8px;background:#D07D3E;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 5px;border:1.5px solid #fff;">${cnt}</span>`
+        : '';
+      const nestIcon = L.divIcon({
+        className: 'custom-nest-pin',
+        html: `<div style="position:relative;font-size:24px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">🪺${badgeHtml}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      if (!isNaN(g.lat) && !isNaN(g.lng)) {
+        const m = L.marker([g.lat, g.lng], { icon: nestIcon }).addTo(viewLayer);
+        const reasonsHtml = g.entries.slice().reverse().map(e => `
+          <div style="background:#FAF6EC;border-left:3px solid #245943;padding:5px 8px;border-radius:6px;margin-top:5px;">
+            <div style="font-size:12.5px;color:#4A3520;">${escapeHtml(e.reason)}</div>
+            <div style="font-size:10.5px;color:#7C6A56;margin-top:2px;">by. ${escapeHtml(e.nick || '익명')}</div>
+          </div>
+        `).join('');
         m.bindPopup(`
-          <div style="min-width:170px; font-family:'Noto Sans KR',sans-serif;">
-            <div style="font-size:11px; color:#245943; font-weight:700;">${it.region} · ${it.area}</div>
-            <div style="font-size:14px; font-weight:700; margin:3px 0;">${it.placeName}</div>
-            <div style="font-size:12.5px; color:#4A3520;">${it.reason}</div>
-            <div style="font-size:11px; color:#7C6A56; margin-top:4px;">by. ${it.nick || '익명'}</div>
+          <div style="min-width:190px;max-width:260px;max-height:240px;overflow-y:auto;font-family:'Noto Sans KR',sans-serif;">
+            <div style="font-size:11px;color:#245943;font-weight:700;">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</div>
+            <div style="font-size:14px;font-weight:700;margin:3px 0;">
+              ${escapeHtml(g.placeName)}
+              ${cnt > 1 ? `<span style="background:#D07D3E;color:#fff;font-size:10.5px;padding:1px 6px;border-radius:999px;margin-left:4px;">${cnt}명 추천</span>` : ''}
+            </div>
+            ${reasonsHtml}
           </div>
         `);
       }
     });
 
     const listEl = document.getElementById('publicList');
-    if (!filtered.length) {
+    if (!groups.length) {
       listEl.innerHTML = '<div class="empty-box">아직 이 권역에 등록된 둥지가 없어요. 첫 번째 둥지지기가 되어보세요!</div>';
       return;
     }
-    listEl.innerHTML = filtered.slice().reverse().map(it => `
-      <div class="nest-item" onclick="focusPin(${it.lat || 'null'}, ${it.lng || 'null'})" style="cursor:pointer;">
-        <div>
-          <span class="nest-item-tag">${it.region} · ${it.area}</span>
-          <h4>🪺 ${escapeHtml(it.placeName)}</h4>
-          <p>${escapeHtml(it.reason)}</p>
-          <small>by. ${escapeHtml(it.nick || '익명의 둥지지기')}</small>
+    listEl.innerHTML = groups.slice().reverse().map(g => {
+      const cnt = g.entries.length;
+      const stack = g.entries.slice().reverse().map(e => `
+        <div class="reason-bubble">
+          ${escapeHtml(e.reason)}
+          <small>by. ${escapeHtml(e.nick || '익명의 둥지지기')}</small>
         </div>
-      </div>
-    `).join('');
+      `).join('');
+      return `
+        <div class="nest-item" onclick="focusPin(${g.lat || 'null'}, ${g.lng || 'null'})" style="cursor:pointer;display:block;">
+          <span class="nest-item-tag">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</span>
+          <h4>🪺 ${escapeHtml(g.placeName)}${cnt > 1 ? `<span class="count-badge">${cnt}개의 둥지</span>` : ''}</h4>
+          <div class="reason-stack">${stack}</div>
+        </div>
+      `;
+    }).join('');
   }
 
   function focusPin(lat, lng) {
@@ -789,9 +896,26 @@
     }
 
     await loadNests();
-    const toast = document.getElementById('toast');
-    toast.style.display = 'block';
-    toast.innerHTML = `✅ <strong>${escapeHtml(placeName)}</strong> 둥지가 전국 둥지 지도에 등록되었어요!<br/>상단 <b>[🗺️ 전국 둥지 지도]</b> 탭에서 바로 보실 수 있어요.`;
+    document.getElementById('doneModalDesc').innerHTML =
+      `<strong>${escapeHtml(placeName)}</strong> 둥지가 지도에 올라갔어요!<br/>다른 분들이 남긴 둥지도 함께 구경해 볼까요?`;
+    document.getElementById('doneModal').classList.add('show');
+
+    // Reset form for next entry
+    document.getElementById('placeName').value = '';
+    document.getElementById('reason').value = '';
+    document.getElementById('nick').value = '';
+    updatePreview();
+  }
+
+  function closeDoneModal() {
+    document.getElementById('doneModal').classList.remove('show');
+  }
+
+  function goToPublicMap() {
+    closeDoneModal();
+    const mapTabBtn = document.querySelectorAll('.tab-btn')[1];
+    switchTab('map', mapTabBtn);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function escapeHtml(s) {
@@ -800,5 +924,17 @@
 
   loadNests();
 </script>
+
+<div class="modal-backdrop" id="doneModal">
+  <div class="modal-box">
+    <div class="modal-icon">🪺</div>
+    <h3>내 둥지가 등록되었어요!</h3>
+    <p id="doneModalDesc">전국 둥지 지도에서 내 둥지와 다른 분들의 아지트를 확인해 보세요.</p>
+    <div class="modal-actions">
+      <button class="btn" style="padding:13px; font-size:15px;" onclick="goToPublicMap()">🗺️ 다른 둥지 확인하러 가기</button>
+      <button class="btn btn-ghost" style="padding:11px;" onclick="closeDoneModal()">하나 더 남기기</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
