@@ -1105,10 +1105,15 @@
     let rSize = 11.8;
     pvReason.style.fontSize = rSize + 'px';
     pvReason.style.lineHeight = '32px';
-    if (pvReason.scrollHeight > 70) {
-      // 3줄 이상 필요할 땐 줄간격을 촘촘히 하고 폰트를 줄여 전부 표시
+    // 점선 2줄 간격(32px)에 맞춰 2줄(scrollHeight <= 68) 안에 다 들어가도록 폰트 축소
+    while (pvReason.scrollHeight > 68 && rSize > 7.5) {
+      rSize -= 0.5;
+      pvReason.style.fontSize = rSize + 'px';
+    }
+    // 7.5px로도 2줄을 넘길 만큼 아주 긴 문장일 때만 3줄 허용
+    if (pvReason.scrollHeight > 68) {
       pvReason.style.lineHeight = '1.45';
-      while (pvReason.scrollHeight > 74 && rSize > 7.5) {
+      while (pvReason.scrollHeight > 74 && rSize > 6.5) {
         rSize -= 0.5;
         pvReason.style.fontSize = rSize + 'px';
       }
