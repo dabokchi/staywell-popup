@@ -562,15 +562,28 @@
 
   function nestPinSvg(color, cnt) {
     const badge = cnt > 1
-      ? `<span style="position:absolute;top:-5px;right:-7px;background:#D07D3E;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 5px;border:1.5px solid #fff;line-height:1.2;">${cnt}</span>`
+      ? `<span style="position:absolute;top:-5px;right:-6px;background:#D07D3E;color:#fff;font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 6px;border:1.5px solid #fff;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">${cnt}</span>`
       : '';
-    return `<div style="position:relative;width:34px;height:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.28));">
-      <svg width="34" height="30" viewBox="0 0 36 32">
-        <path d="M18 3C14 3 11 9.5 11 14C11 17.8 14 20 18 20C22 20 25 17.8 25 14C25 9.5 22 3 18 3Z" fill="${color}" stroke="#4A3520" stroke-width="1.6"/>
-        <ellipse cx="15.5" cy="9" rx="1.3" ry="2.4" transform="rotate(-15 15.5 9)" fill="rgba(255,255,255,0.5)"/>
-        <path d="M4 16C4 23 10 27 18 27C26 27 32 23 32 16C28 19 23 20 18 20C13 20 8 19 4 16Z" fill="#A67442" stroke="#4A3520" stroke-width="1.5"/>
-        <path d="M7 19C11 21.5 25 21.5 29 19" stroke="#6B4722" stroke-width="1.3" fill="none"/>
-        <path d="M9 22.5C13 24.5 23 24.5 27 22.5" stroke="#6B4722" stroke-width="1.3" fill="none"/>
+    return `<div style="position:relative;width:44px;height:40px;filter:drop-shadow(0 2px 4px rgba(45,30,15,0.32));">
+      <svg width="44" height="40" viewBox="0 0 48 44">
+        <!-- 둥지 뒷쪽 그림자와 안쪽 테두리 -->
+        <ellipse cx="24" cy="24" rx="17" ry="8" fill="#5A3A1E" />
+        <ellipse cx="24" cy="23.5" rx="14" ry="5.5" fill="#3B2410" />
+        <!-- 작은 나뭇잎 포인트 -->
+        <path d="M40 20 C44 16, 46 19, 43 23 C41 24, 39 22, 40 20 Z" fill="#6AA84F" stroke="#3E6B2C" stroke-width="1"/>
+        <!-- 알 (둥지 안쪽에 폭 감싸인 모습) -->
+        <path d="M24 5.5 C19.5 5.5, 16.5 13, 16.5 18.5 C16.5 22.8, 19.8 25.5, 24 25.5 C28.2 25.5, 31.5 22.8, 31.5 18.5 C31.5 13, 28.5 5.5, 24 5.5 Z" fill="${color}" stroke="#4A3520" stroke-width="1.5"/>
+        <ellipse cx="21.4" cy="12.5" rx="1.6" ry="3.2" transform="rotate(-16 21.4 12.5)" fill="rgba(255,255,255,0.52)"/>
+        <!-- 둥지 앞쪽 본체 (자연스러운 둥근 실루엣) -->
+        <path d="M6.5 22 C7 33, 14 37.5, 24 37.5 C34 37.5, 41 33, 41.5 22 C37.5 26, 31 27.5, 24 27.5 C17 27.5, 10.5 26, 6.5 22 Z" fill="#9E6F40" stroke="#4A3520" stroke-width="1.4" stroke-linejoin="round"/>
+        <!-- 얽힌 나뭇가지 결들 -->
+        <path d="M4 23 Q15 30 33 27" stroke="#6E4723" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M44 22.5 Q32 31 13 28.5" stroke="#B98856" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <path d="M7 28 Q21 35 39 29" stroke="#7D522B" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M10 32.5 Q24 37.5 37 32" stroke="#5A3A1E" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+        <path d="M15 26.5 Q24 31.5 34 26" stroke="#C79968" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <!-- 삐져나온 잔가지 끝 -->
+        <path d="M7 25 L3 26.5 M40 26 L44.5 28 M12 34 L8.5 36.5" stroke="#5A3A1E" stroke-width="1.6" stroke-linecap="round"/>
       </svg>${badge}
     </div>`;
   }
@@ -743,8 +756,8 @@
       const nestIcon = L.divIcon({
         className: 'custom-nest-pin',
         html: nestPinSvg(pinColor, cnt),
-        iconSize: [34, 30],
-        iconAnchor: [17, 15]
+        iconSize: [44, 40],
+        iconAnchor: [22, 24]
       });
 
       if (!isNaN(g.lat) && !isNaN(g.lng)) {
