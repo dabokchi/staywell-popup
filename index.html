@@ -331,6 +331,59 @@
       margin-left: 5px;
       vertical-align: middle;
     }
+
+    .cat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .cat-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: #FFFDF9;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--brown);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.14s;
+    }
+    .cat-btn.active {
+      border-color: var(--green);
+      background: var(--green-light);
+      color: var(--green);
+      box-shadow: 0 2px 6px rgba(36, 89, 67, 0.12);
+    }
+    .egg-dot {
+      display: inline-block;
+      width: 12px;
+      height: 15px;
+      border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+      border: 1.5px solid rgba(74, 53, 32, 0.35);
+      flex-shrink: 0;
+    }
+    .legend-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #FAF6EC;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--brown);
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -380,6 +433,11 @@
       </div>
 
       <div class="field">
+        <label>장소 성격 (알 색깔) <span class="req">*</span></label>
+        <div class="cat-grid" id="catGrid"></div>
+      </div>
+
+      <div class="field">
         <label>최애 장소 이름 <span class="req">*</span></label>
         <input type="text" id="placeName" placeholder="예: 설봉공원 산책길" oninput="updatePreview()" />
       </div>
@@ -399,6 +457,7 @@
       <div class="sec-title">2. 내 둥지 포스트잇 미리보기</div>
       <div class="preview-wrap">
         <div class="nest-circle">
+          <div id="pvEgg" style="margin-bottom:5px;"></div>
           <div class="nest-place" id="pvPlace">장소를 입력해 주세요</div>
           <div class="nest-reason" id="pvReason">추천 이유가 여기에 표시됩니다</div>
           <div class="nest-nick" id="pvNick"></div>
@@ -417,6 +476,7 @@
         <button class="btn btn-outline" onclick="loadNests()">새로고침</button>
       </div>
       <div class="chips" id="publicChips"></div>
+      <div class="legend-bar" id="legendBar"></div>
       <div id="viewMap"></div>
       <div class="nest-list" id="publicList"></div>
     </div>
@@ -466,6 +526,70 @@
   };
 
   let allNests = [];
+
+  const CATEGORIES = [
+    { id: "맛집·카페", label: "맛집·카페", color: "#F5C542", emoji: "💛" },
+    { id: "산책·자연", label: "산책·자연", color: "#4CAF6A", emoji: "💚" },
+    { id: "책·문화·몰입", label: "책·문화·몰입", color: "#4A90E2", emoji: "💙" },
+    { id: "취미·놀거리", label: "취미·놀거리", color: "#9B6BCE", emoji: "💜" },
+    { id: "나만의 아지트", label: "나만의 아지트", color: "#E68A3E", emoji: "🧡" }
+  ];
+  let selectedCat = CATEGORIES[0].id;
+
+  function getCatObj(id) {
+    return CATEGORIES.find(c => c.id === id) || CATEGORIES[4];
+  }
+
+  function eggSvg(color, size = 16) {
+    const h = Math.round(size * 1.22);
+    return `<svg width="${size}" height="${h}" viewBox="0 0 20 24" style="vertical-align:middle;"><path d="M10 1.5C5.5 1.5 2 9.5 2 15.2C2 19.8 5.5 22.5 10 22.5C14.5 22.5 18 19.8 18 15.2C18 9.5 14.5 1.5 10 1.5Z" fill="${color}" stroke="#4A3520" stroke-width="1.6"/><ellipse cx="7.3" cy="8.5" rx="1.6" ry="3" transform="rotate(-18 7.3 8.5)" fill="rgba(255,255,255,0.45)"/></svg>`;
+  }
+
+  function nestPinSvg(color, cnt) {
+    const badge = cnt > 1
+      ? `<span style="position:absolute;top:-5px;right:-7px;background:#D07D3E;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 5px;border:1.5px solid #fff;line-height:1.2;">${cnt}</span>`
+      : '';
+    return `<div style="position:relative;width:34px;height:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.28));">
+      <svg width="34" height="30" viewBox="0 0 36 32">
+        <path d="M18 3C14 3 11 9.5 11 14C11 17.8 14 20 18 20C22 20 25 17.8 25 14C25 9.5 22 3 18 3Z" fill="${color}" stroke="#4A3520" stroke-width="1.6"/>
+        <ellipse cx="15.5" cy="9" rx="1.3" ry="2.4" transform="rotate(-15 15.5 9)" fill="rgba(255,255,255,0.5)"/>
+        <path d="M4 16C4 23 10 27 18 27C26 27 32 23 32 16C28 19 23 20 18 20C13 20 8 19 4 16Z" fill="#A67442" stroke="#4A3520" stroke-width="1.5"/>
+        <path d="M7 19C11 21.5 25 21.5 29 19" stroke="#6B4722" stroke-width="1.3" fill="none"/>
+        <path d="M9 22.5C13 24.5 23 24.5 27 22.5" stroke="#6B4722" stroke-width="1.3" fill="none"/>
+      </svg>${badge}
+    </div>`;
+  }
+
+  function encodeReason(catId, rawReason) {
+    return `[${catId}] ${rawReason}`;
+  }
+
+  function decodeReason(raw) {
+    const s = String(raw || '');
+    const m = s.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+    if (m && CATEGORIES.some(c => c.id === m[1])) {
+      return { catId: m[1], text: m[2] };
+    }
+    return { catId: "나만의 아지트", text: s };
+  }
+
+  function renderCatButtons() {
+    document.getElementById('catGrid').innerHTML = CATEGORIES.map(c => `
+      <button type="button" class="cat-btn ${selectedCat === c.id ? 'active' : ''}" onclick="selectCat('${c.id}')">
+        <span class="egg-dot" style="background:${c.color};"></span>${c.label}
+      </button>
+    `).join('');
+    document.getElementById('legendBar').innerHTML = CATEGORIES.map(c => `
+      <span class="legend-item">${eggSvg(c.color, 13)} ${c.label}</span>
+    `).join('');
+  }
+
+  function selectCat(id) {
+    selectedCat = id;
+    renderCatButtons();
+    updatePreview();
+  }
+
   let publicFilter = "전체";
   let adminFilter = "전체";
   let isAdmin = false;
@@ -587,24 +711,28 @@
 
     groups.forEach(g => {
       const cnt = g.entries.length;
-      const badgeHtml = cnt > 1
-        ? `<span style="position:absolute;top:-5px;right:-8px;background:#D07D3E;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 5px;border:1.5px solid #fff;">${cnt}</span>`
-        : '';
+      const latestDec = decodeReason(g.entries[g.entries.length - 1].reason);
+      const pinColor = getCatObj(latestDec.catId).color;
       const nestIcon = L.divIcon({
         className: 'custom-nest-pin',
-        html: `<div style="position:relative;font-size:24px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3));">🪺${badgeHtml}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        html: nestPinSvg(pinColor, cnt),
+        iconSize: [34, 30],
+        iconAnchor: [17, 15]
       });
 
       if (!isNaN(g.lat) && !isNaN(g.lng)) {
         const m = L.marker([g.lat, g.lng], { icon: nestIcon }).addTo(viewLayer);
-        const reasonsHtml = g.entries.slice().reverse().map(e => `
-          <div style="background:#FAF6EC;border-left:3px solid #245943;padding:5px 8px;border-radius:6px;margin-top:5px;">
-            <div style="font-size:12.5px;color:#4A3520;">${escapeHtml(e.reason)}</div>
-            <div style="font-size:10.5px;color:#7C6A56;margin-top:2px;">by. ${escapeHtml(e.nick || '익명')}</div>
-          </div>
-        `).join('');
+        const reasonsHtml = g.entries.slice().reverse().map(e => {
+          const dec = decodeReason(e.reason);
+          const catObj = getCatObj(dec.catId);
+          return `
+            <div style="background:#FAF6EC;border-left:3px solid ${catObj.color};padding:5px 8px;border-radius:6px;margin-top:5px;">
+              <div style="font-size:10.5px;font-weight:700;color:#4A3520;margin-bottom:2px;">${eggSvg(catObj.color, 11)} ${escapeHtml(catObj.label)}</div>
+              <div style="font-size:12.5px;color:#4A3520;">${escapeHtml(dec.text)}</div>
+              <div style="font-size:10.5px;color:#7C6A56;margin-top:2px;">by. ${escapeHtml(e.nick || '익명')}</div>
+            </div>
+          `;
+        }).join('');
         m.bindPopup(`
           <div style="min-width:190px;max-width:260px;max-height:240px;overflow-y:auto;font-family:'Noto Sans KR',sans-serif;">
             <div style="font-size:11px;color:#245943;font-weight:700;">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</div>
@@ -625,12 +753,17 @@
     }
     listEl.innerHTML = groups.slice().reverse().map(g => {
       const cnt = g.entries.length;
-      const stack = g.entries.slice().reverse().map(e => `
-        <div class="reason-bubble">
-          ${escapeHtml(e.reason)}
-          <small>by. ${escapeHtml(e.nick || '익명의 둥지지기')}</small>
-        </div>
-      `).join('');
+      const stack = g.entries.slice().reverse().map(e => {
+        const dec = decodeReason(e.reason);
+        const catObj = getCatObj(dec.catId);
+        return `
+          <div class="reason-bubble" style="border-left-color:${catObj.color};">
+            <div style="font-size:11.5px;font-weight:700;margin-bottom:2px;">${eggSvg(catObj.color, 12)} ${escapeHtml(catObj.label)}</div>
+            ${escapeHtml(dec.text)}
+            <small>by. ${escapeHtml(e.nick || '익명의 둥지지기')}</small>
+          </div>
+        `;
+      }).join('');
       return `
         <div class="nest-item" onclick="focusPin(${g.lat || 'null'}, ${g.lng || 'null'})" style="cursor:pointer;display:block;">
           <span class="nest-item-tag">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</span>
@@ -804,7 +937,7 @@
             const addr = it.road_address_name || it.address_name || '';
             const cat = it.category_group_name ? ` · ${it.category_group_name}` : '';
             return `
-              <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)})'>
+              <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)}, ${JSON.stringify(it.category_group_name || "")})'>
                 <strong>${escapeHtml(it.place_name)}</strong><span class="sr-sub">${escapeHtml(cat)}</span>
                 <div class="sr-sub">${escapeHtml(addr)}</div>
               </div>
@@ -840,7 +973,14 @@
     }
   }
 
-  function pickResult(lat, lon, name, fullAddr) {
+  function autoCatFromKakao(catName) {
+    if (!catName) return;
+    if (catName.includes('음식') || catName.includes('카페')) selectCat('맛집·카페');
+    else if (catName.includes('관광') || catName.includes('공원')) selectCat('산책·자연');
+    else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('책·문화·몰입');
+  }
+  function pickResult(lat, lon, name, fullAddr, catName) {
+    if (catName) autoCatFromKakao(catName);
     document.getElementById('searchResults').style.display = 'none';
     setPin(parseFloat(lat), parseFloat(lon), `${name} (${fullAddr})`);
     const r = guessRegion(fullAddr);
@@ -855,6 +995,7 @@
   });
 
   function updatePreview() {
+    document.getElementById('pvEgg').innerHTML = eggSvg(getCatObj(selectedCat).color, 20);
     const p = document.getElementById('placeName').value.trim();
     const r = document.getElementById('reason').value.trim();
     const n = document.getElementById('nick').value.trim();
@@ -879,7 +1020,7 @@
     const item = {
       id: "n_" + Date.now(),
       action: "add",
-      region, area, placeName, reason, nick,
+      region, area, placeName, reason: encodeReason(selectedCat, reason), nick,
       lat: marker ? marker.getLatLng().lat : center[0],
       lng: marker ? marker.getLatLng().lng : center[1],
       createdAt: new Date().toISOString()
@@ -922,6 +1063,8 @@
     return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
+  renderCatButtons();
+  updatePreview();
   loadNests();
 </script>
 
