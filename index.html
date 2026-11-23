@@ -180,16 +180,17 @@
     }
     .nest-egg-badge {
       position: absolute;
-      top: 52px;
-      right: 68px;
+      top: 46px;
+      left: 50%;
+      transform: translateX(-50%);
     }
     .nest-place {
       position: absolute;
-      top: 84px;
-      left: 112px;
-      right: 66px;
+      top: 83px;
+      left: 114px;
+      right: 64px;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 12.5px;
       color: #3E2A16;
       white-space: nowrap;
       overflow: hidden;
@@ -197,12 +198,13 @@
     }
     .nest-reason {
       position: absolute;
-      top: 138px;
-      left: 74px;
-      right: 72px;
-      font-size: 12px;
+      top: 115px;
+      left: 76px;
+      right: 68px;
+      text-indent: 38px;
+      font-size: 11.8px;
       color: #4A3520;
-      line-height: 2.05;
+      line-height: 31px;
       word-break: keep-all;
       overflow: hidden;
       display: -webkit-box;
@@ -211,8 +213,8 @@
     }
     .nest-nick {
       position: absolute;
-      bottom: 68px;
-      left: 74px;
+      bottom: 58px;
+      left: 76px;
       font-size: 10.5px;
       color: #7C6A56;
     }
@@ -1176,10 +1178,10 @@
   }
   function closeIntroModal() {
     document.getElementById('introModal').classList.remove('show');
-    try { localStorage.setItem('staywell_intro_seen', '1'); } catch (_) {}
+    try { sessionStorage.setItem('staywell_intro_seen_v2', '1'); } catch (_) {}
   }
   try {
-    if (!localStorage.getItem('staywell_intro_seen')) {
+    if (!sessionStorage.getItem('staywell_intro_seen_v2')) {
       setTimeout(openIntroModal, 250);
     }
   } catch (_) {}
