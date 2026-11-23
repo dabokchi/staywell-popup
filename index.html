@@ -296,7 +296,7 @@
     <div class="card">
       <div class="sec-title">1. 지도에서 장소 찾기</div>
       <div class="search-row">
-        <input type="text" id="q" placeholder="장소나 동네 이름 검색 (예: 이천 설봉공원, 홍대)" />
+        <input type="text" id="q" placeholder="식당, 도서관, 카페, 동네 검색 (예: 이천시립도서관)" />
         <button class="btn" type="button" onclick="searchPlace()">검색</button>
       </div>
       <div id="searchResults"></div>
@@ -390,6 +390,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=b0277ab1320164fe512b7833d698cf74&libraries=services&autoload=false"></script>
 <script>
   // ▼ 여기에 Google Apps Script 웹앱 URL을 넣으면 모든 방문자가 실시간 공유합니다!
   const API_URL = "https://script.google.com/macros/s/AKfycbyYaYmN207HFwAcWVKg7FgHzHWuc29See-DiVoXdm0j5gRxaAAscU13YWhtdYoS5s08/exec";
@@ -613,6 +614,17 @@
     info.textContent = `📍 선택된 위치: ${labelText || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}`;
   }
 
+  let kakaoReady = false;
+  let kakaoPlaces = null;
+  let kakaoGeocoder = null;
+  if (window.kakao && kakao.maps) {
+    kakao.maps.load(() => {
+      kakaoReady = true;
+      kakaoPlaces = new kakao.maps.services.Places();
+      kakaoGeocoder = new kakao.maps.services.Geocoder();
+    });
+  }
+
   function guessRegion(addr) {
     if (!addr) return null;
     if (addr.includes('이천')) return '이천시';
@@ -620,16 +632,43 @@
     if (addr.includes('인천')) return '인천';
     if (addr.includes('경기')) return '경기';
     if (addr.includes('강원')) return '강원';
-    if (addr.includes('충청') || addr.includes('대전') || addr.includes('세종')) return '충청';
-    if (addr.includes('전라') || addr.includes('광주')) return '전라';
-    if (addr.includes('경상') || addr.includes('부산') || addr.includes('대구') || addr.includes('울산')) return '경상';
+    if (addr.includes('충청') || addr.includes('충북') || addr.includes('충남') || addr.includes('대전') || addr.includes('세종')) return '충청';
+    if (addr.includes('전라') || addr.includes('전북') || addr.includes('전남') || addr.includes('광주')) return '전라';
+    if (addr.includes('경상') || addr.includes('경북') || addr.includes('경남') || addr.includes('부산') || addr.includes('대구') || addr.includes('울산')) return '경상';
     if (addr.includes('제주')) return '제주';
     return null;
+  }
+
+  function shortAreaFromAddr(addr) {
+    if (!addr) return '';
+    const parts = addr.trim().split(/\s+/);
+    return parts.slice(0, 3).join(' ');
   }
 
   map.on('click', async (e) => {
     const { lat, lng } = e.latlng;
     setPin(lat, lng);
+    if (kakaoReady && kakaoGeocoder) {
+      kakaoGeocoder.coord2Address(lng, lat, (result, status) => {
+        if (status === kakao.maps.services.Status.OK && result[0]) {
+          const addr = (result[0].road_address && result[0].road_address.address_name) ||
+                       (result[0].address && result[0].address.address_name) || '';
+          const r = guessRegion(addr);
+          if (r) document.getElementById('region').value = r;
+          const shortArea = shortAreaFromAddr(addr);
+          if (shortArea) document.getElementById('area').value = shortArea;
+          setPin(lat, lng, addr || shortArea);
+          updatePreview();
+          return;
+        }
+        fallbackReverseGeocode(lat, lng);
+      });
+    } else {
+      fallbackReverseGeocode(lat, lng);
+    }
+  });
+
+  async function fallbackReverseGeocode(lat, lng) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ko`);
       const data = await res.json();
@@ -642,7 +681,7 @@
       setPin(lat, lng, shortArea || disp);
       updatePreview();
     } catch (_) {}
-  });
+  }
 
   async function searchPlace() {
     const q = document.getElementById('q').value.trim();
@@ -650,6 +689,32 @@
     const box = document.getElementById('searchResults');
     box.style.display = 'block';
     box.innerHTML = '<div class="sr-item">검색 중...</div>';
+
+    if (kakaoReady && kakaoPlaces) {
+      kakaoPlaces.keywordSearch(q, (data, status) => {
+        if (status === kakao.maps.services.Status.OK && data.length) {
+          box.innerHTML = data.slice(0, 10).map(it => {
+            const addr = it.road_address_name || it.address_name || '';
+            const cat = it.category_group_name ? ` · ${it.category_group_name}` : '';
+            return `
+              <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)})'>
+                <strong>${escapeHtml(it.place_name)}</strong><span class="sr-sub">${escapeHtml(cat)}</span>
+                <div class="sr-sub">${escapeHtml(addr)}</div>
+              </div>
+            `;
+          }).join('');
+        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+          box.innerHTML = '<div class="sr-item">검색 결과가 없어요. 지도를 직접 눌러 찍어주세요!</div>';
+        } else {
+          fallbackNominatimSearch(q, box);
+        }
+      });
+      return;
+    }
+    fallbackNominatimSearch(q, box);
+  }
+
+  async function fallbackNominatimSearch(q, box) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=kr&limit=5&accept-language=ko`);
       const list = await res.json();
@@ -670,11 +735,11 @@
 
   function pickResult(lat, lon, name, fullAddr) {
     document.getElementById('searchResults').style.display = 'none';
-    setPin(parseFloat(lat), parseFloat(lon), name);
+    setPin(parseFloat(lat), parseFloat(lon), `${name} (${fullAddr})`);
     const r = guessRegion(fullAddr);
     if (r) document.getElementById('region').value = r;
-    if (!document.getElementById('placeName').value) document.getElementById('placeName').value = name;
-    document.getElementById('area').value = fullAddr.split(',').slice(0, 3).join(' ').trim();
+    document.getElementById('placeName').value = name;
+    document.getElementById('area').value = shortAreaFromAddr(fullAddr) || fullAddr.split(',').slice(0, 3).join(' ').trim();
     updatePreview();
   }
 
