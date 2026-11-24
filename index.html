@@ -195,18 +195,39 @@
       white-space: nowrap;
       overflow: hidden;
     }
-    .nest-reason {
+    .nest-reason-l1 {
       position: absolute;
-      top: 111px;
+      top: 112px;
+      left: 114px;
+      right: 66px;
+      font-size: 11.5px;
+      color: #4A3520;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .nest-reason-l2 {
+      position: absolute;
+      top: 144px;
       left: 76px;
       right: 66px;
-      text-indent: 38px;
-      font-size: 11.8px;
+      font-size: 11.5px;
       color: #4A3520;
-      line-height: 32px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .nest-reason-l3 {
+      position: absolute;
+      top: 174px;
+      left: 84px;
+      right: 74px;
+      max-height: 36px;
+      font-size: 9.8px;
+      color: #4A3520;
+      line-height: 1.32;
       word-break: break-all;
       overflow-wrap: anywhere;
-      max-height: 82px;
       overflow: hidden;
     }
     .nest-nick {
@@ -545,7 +566,9 @@
         <div class="nest-circle">
           <div class="nest-egg-badge" id="pvEgg"></div>
           <div class="nest-place" id="pvPlace">장소를 입력해 주세요</div>
-          <div class="nest-reason" id="pvReason">추천 이유가 여기에 표시됩니다</div>
+          <div class="nest-reason-l1" id="pvReason1">추천 이유가 여기에 표시됩니다</div>
+          <div class="nest-reason-l2" id="pvReason2"></div>
+          <div class="nest-reason-l3" id="pvReason3"></div>
           <div class="nest-nick" id="pvNick"></div>
         </div>
       </div>
@@ -1222,34 +1245,62 @@
       pvPlace.style.lineHeight = '1.15';
     }
 
-    const pvReason = document.getElementById('pvReason');
-    pvReason.textContent = r || '추천 이유가 여기에 표시됩니다';
-    // 매번 1~2줄 기본 위치/들여쓰기로 초기화
-    pvReason.style.left = '76px';
-    pvReason.style.textIndent = '38px';
-    pvReason.style.top = '111px';
-    pvReason.style.lineHeight = '32px';
-    pvReason.style.maxHeight = '76px';
-    let rSize = 11.8;
-    pvReason.style.fontSize = rSize + 'px';
+    const l1 = document.getElementById('pvReason1');
+    const l2 = document.getElementById('pvReason2');
+    const l3 = document.getElementById('pvReason3');
+    const rawReason = (r || '추천 이유가 여기에 표시됩니다').replace(/\r?\n/g, ' ');
 
-    // 점선 2줄 간격(32px)에 맞춰 2줄(scrollHeight <= 68) 안에 다 들어가도록 폰트 축소
-    while ((pvReason.scrollHeight > 68 || pvReason.scrollWidth > pvReason.clientWidth) && rSize > 7.5) {
-      rSize -= 0.5;
-      pvReason.style.fontSize = rSize + 'px';
+    function splitFitLine(el, text, fontSize) {
+      el.style.fontSize = fontSize + 'px';
+      el.textContent = text;
+      if (el.scrollWidth <= el.clientWidth) return [text, ''];
+      let lo = 1, hi = text.length, fit = 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        el.textContent = text.slice(0, mid);
+        if (el.scrollWidth <= el.clientWidth) {
+          fit = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      // 단어 중간보다 공백 위치가 근처에 있으면 거기서 끊기
+      let cut = fit;
+      const spaceIdx = text.lastIndexOf(' ', fit);
+      if (spaceIdx > Math.floor(fit * 0.55)) cut = spaceIdx;
+      el.textContent = text.slice(0, cut).trimEnd();
+      return [el.textContent, text.slice(cut).trimStart()];
     }
-    // 7.5px로도 2줄을 넘길 만큼 긴 문장일 때는 '이유 :' 오른쪽으로 블록 정렬해 겹침 방지
-    if (pvReason.scrollHeight > 68 || pvReason.scrollWidth > pvReason.clientWidth) {
-      pvReason.style.left = '112px';
-      pvReason.style.textIndent = '0px';
-      pvReason.style.top = '116px';
-      pvReason.style.lineHeight = '1.42';
-      pvReason.style.maxHeight = '74px';
-      rSize = 9.5;
-      pvReason.style.fontSize = rSize + 'px';
-      while ((pvReason.scrollHeight > 72 || pvReason.scrollWidth > pvReason.clientWidth) && rSize > 6.0) {
-        rSize -= 0.5;
-        pvReason.style.fontSize = rSize + 'px';
+
+    // 1~2줄 안에 들어가면 점선 1·2 위에만 깔끔히 맞춤 (11.5px -> 9.5px)
+    let placed = false;
+    for (let fs = 11.5; fs >= 9.5; fs -= 0.5) {
+      const [p1, rem1] = splitFitLine(l1, rawReason, fs);
+      if (!rem1) {
+        l2.textContent = '';
+        l3.textContent = '';
+        placed = true;
+        break;
+      }
+      const [p2, rem2] = splitFitLine(l2, rem1, fs);
+      if (!rem2) {
+        l3.textContent = '';
+        placed = true;
+        break;
+      }
+    }
+
+    // 3줄 이상이면 1·2번 줄은 10.5px로 점선 위에 고정하고, 나머지는 둘째 점선 아래 빈 공간으로 내려 쭉 이어짐
+    if (!placed) {
+      const [, rem1] = splitFitLine(l1, rawReason, 10.5);
+      const [, rem2] = splitFitLine(l2, rem1, 10.5);
+      l3.textContent = rem2;
+      let fs3 = 9.8;
+      l3.style.fontSize = fs3 + 'px';
+      while (l3.scrollHeight > l3.clientHeight && fs3 > 6.5) {
+        fs3 -= 0.5;
+        l3.style.fontSize = fs3 + 'px';
       }
     }
 
