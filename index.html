@@ -674,10 +674,14 @@
   const CATEGORIES = [
     { id: "맛집·카페", label: "맛집·카페", color: "#F5C542", emoji: "💛" },
     { id: "산책·자연", label: "산책·자연", color: "#4CAF6A", emoji: "💚" },
-    { id: "책·문화·몰입", label: "책·문화·몰입", color: "#4A90E2", emoji: "💙" },
-    { id: "취미·놀거리", label: "취미·놀거리", color: "#9B6BCE", emoji: "💜" },
+    { id: "작업·독서·몰입", label: "작업·독서·몰입", color: "#4A90E2", emoji: "💙" },
+    { id: "운동·건강", label: "운동·건강", color: "#9B6BCE", emoji: "💜" },
     { id: "나만의 아지트", label: "나만의 아지트", color: "#E68A3E", emoji: "🧡" }
   ];
+  const LEGACY_CAT_MAP = {
+    "책·문화·몰입": "작업·독서·몰입",
+    "취미·놀거리": "운동·건강"
+  };
   let selectedCat = CATEGORIES[0].id;
 
   function getCatObj(id) {
@@ -692,8 +696,8 @@
   const PIN_FILES = {
     "맛집·카페": "pins/nest_yellow.png?v=5",
     "산책·자연": "pins/nest_green.png?v=5",
-    "책·문화·몰입": "pins/nest_blue.png?v=5",
-    "취미·놀거리": "pins/nest_purple.png?v=5",
+    "작업·독서·몰입": "pins/nest_blue.png?v=5",
+    "운동·건강": "pins/nest_purple.png?v=5",
     "나만의 아지트": "pins/nest_orange.png?v=5"
   };
   function nestPinImg(catId, cnt) {
@@ -736,8 +740,11 @@
   function decodeReason(raw) {
     const s = String(raw || '');
     const m = s.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
-    if (m && CATEGORIES.some(c => c.id === m[1])) {
-      return { catId: m[1], text: m[2] };
+    if (m) {
+      const mapped = LEGACY_CAT_MAP[m[1]] || m[1];
+      if (CATEGORIES.some(c => c.id === mapped)) {
+        return { catId: mapped, text: m[2] };
+      }
     }
     return { catId: "나만의 아지트", text: s };
   }
@@ -1206,7 +1213,8 @@
     if (!catName) return;
     if (catName.includes('음식') || catName.includes('카페')) selectCat('맛집·카페');
     else if (catName.includes('관광') || catName.includes('공원')) selectCat('산책·자연');
-    else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('책·문화·몰입');
+    else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('작업·독서·몰입');
+    else if (catName.includes('병원') || catName.includes('약국') || catName.includes('체육') || catName.includes('스포츠')) selectCat('운동·건강');
   }
   function pickResult(lat, lon, name, fullAddr, catName) {
     if (catName) autoCatFromKakao(catName);
