@@ -814,11 +814,11 @@
 
   function renderChips(containerId, current, onPick) {
     const el = document.getElementById(containerId);
-    const list = containerId === 'adminChips' ? [...REGIONS, '💬 댓글'] : REGIONS;
+    const list = containerId === 'adminChips' ? [...REGIONS, '💬 철새 한마디'] : REGIONS;
     el.innerHTML = list.map(r => {
       const cnt = r === "전체"
         ? allNests.length
-        : (r === '💬 댓글' ? allComments.length : allNests.filter(x => x.region === r).length);
+        : (r === '💬 철새 한마디' ? allComments.length : allNests.filter(x => x.region === r).length);
       return `<button class="chip ${current === r ? 'active' : ''}" onclick="${onPick}('${r}')">${r} (${cnt})</button>`;
     }).join('');
   }
@@ -896,7 +896,7 @@
       };
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
-      const cmtLabel = cmts.length > 0 ? `💬 댓글 ${cmts.length}개` : '💬 댓글 달기';
+      const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
       const latestDec = decodeReason(g.entries[g.entries.length - 1].reason);
       const pinColor = getCatObj(latestDec.catId).color;
       const nestIcon = L.divIcon({
@@ -941,7 +941,7 @@
     listEl.innerHTML = groups.slice().reverse().map(g => {
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
-      const cmtLabel = cmts.length > 0 ? `💬 댓글 ${cmts.length}개` : '💬 댓글 달기';
+      const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
       const stack = g.entries.slice().reverse().map(e => {
         const dec = decodeReason(e.reason);
         const catObj = getCatObj(dec.catId);
@@ -986,19 +986,19 @@
 
   function renderAdmin() {
     renderChips('adminChips', adminFilter, 'setAdminFilter');
-    const isCmtTab = adminFilter === '💬 댓글';
+    const isCmtTab = adminFilter === '💬 철새 한마디';
     const filtered = isCmtTab
       ? allComments
       : (adminFilter === "전체" ? allNests : allNests.filter(x => x.region === adminFilter));
     document.getElementById('adminCount').textContent = filtered.length;
     const listEl = document.getElementById('adminList');
     if (!filtered.length) {
-      listEl.innerHTML = `<div class="empty-box">${isCmtTab ? '등록된 댓글이 없어요.' : '등록된 둥지가 없어요.'}</div>`;
+      listEl.innerHTML = `<div class="empty-box">${isCmtTab ? '등록된 철새 한마디가 없어요.' : '등록된 둥지가 없어요.'}</div>`;
       return;
     }
     listEl.innerHTML = filtered.slice().reverse().map(it => {
       const bodyText = isCmtTab ? decodeComment(it).text : it.reason;
-      const tagText = isCmtTab ? `💬 댓글 · ${escapeHtml(it.placeName)}` : `${escapeHtml(it.region)} · ${escapeHtml(it.area)}`;
+      const tagText = isCmtTab ? `💬 철새 한마디 · ${escapeHtml(it.placeName)}` : `${escapeHtml(it.region)} · ${escapeHtml(it.area)}`;
       return `
       <div class="nest-item">
         <div>
@@ -1371,7 +1371,7 @@
     const cmts = getCommentsForPlace(activeCommentPlaceKey);
     const box = document.getElementById('cmtListBox');
     if (!cmts.length) {
-      box.innerHTML = '<div class="empty-box" style="padding:18px 10px;">아직 첫 번째 철새 댓글이 없어요.<br/>이 장소에 대한 한마디를 남겨보세요!</div>';
+      box.innerHTML = '<div class="empty-box" style="padding:18px 10px;">아직 첫 번째 철새 한마디가 없어요.<br/>이 장소에 대한 한마디를 남겨보세요!</div>';
       return;
     }
     box.innerHTML = cmts.slice().reverse().map(c => {
@@ -1435,7 +1435,7 @@
     }
 
     isSubmittingComment = false;
-    if (btn) { btn.disabled = false; btn.textContent = '💬 댓글 남기기'; }
+    if (btn) { btn.disabled = false; btn.textContent = '💬 철새 한마디 남기기'; }
   }
 
   loadNests();
@@ -1471,7 +1471,7 @@
     <div class="comment-form">
       <input type="text" id="cmtNick" placeholder="닉네임 (선택 · 미입력 시 지나가는 철새)" />
       <textarea id="cmtText" rows="2" placeholder="이 장소에 대한 한마디나 팁을 남겨주세요!"></textarea>
-      <button type="button" class="btn" id="cmtSubmitBtn" style="width:100%;padding:11px;font-size:14px;" onclick="submitComment()">💬 댓글 남기기</button>
+      <button type="button" class="btn" id="cmtSubmitBtn" style="width:100%;padding:11px;font-size:14px;" onclick="submitComment()">💬 철새 한마디 남기기</button>
     </div>
   </div>
 </div>
