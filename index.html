@@ -204,7 +204,8 @@
       font-size: 11.8px;
       color: #4A3520;
       line-height: 32px;
-      word-break: keep-all;
+      word-break: break-word;
+      overflow-wrap: anywhere;
       max-height: 76px;
       overflow: hidden;
     }
@@ -1233,12 +1234,12 @@
     pvReason.style.fontSize = rSize + 'px';
 
     // 점선 2줄 간격(32px)에 맞춰 2줄(scrollHeight <= 68) 안에 다 들어가도록 폰트 축소
-    while (pvReason.scrollHeight > 68 && rSize > 7.5) {
+    while ((pvReason.scrollHeight > 68 || pvReason.scrollWidth > pvReason.clientWidth) && rSize > 7.5) {
       rSize -= 0.5;
       pvReason.style.fontSize = rSize + 'px';
     }
     // 7.5px로도 2줄을 넘길 만큼 긴 문장일 때는 '이유 :' 오른쪽으로 블록 정렬해 겹침 방지
-    if (pvReason.scrollHeight > 68) {
+    if (pvReason.scrollHeight > 68 || pvReason.scrollWidth > pvReason.clientWidth) {
       pvReason.style.left = '112px';
       pvReason.style.textIndent = '0px';
       pvReason.style.top = '116px';
@@ -1246,7 +1247,7 @@
       pvReason.style.maxHeight = '74px';
       rSize = 9.5;
       pvReason.style.fontSize = rSize + 'px';
-      while (pvReason.scrollHeight > 72 && rSize > 6.0) {
+      while ((pvReason.scrollHeight > 72 || pvReason.scrollWidth > pvReason.clientWidth) && rSize > 6.0) {
         rSize -= 0.5;
         pvReason.style.fontSize = rSize + 'px';
       }
