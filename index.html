@@ -332,6 +332,64 @@
       color: #4A3520;
     }
     .reason-bubble small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .btn-comment {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 9px;
+      background: #FFF6E8;
+      color: #9A551C;
+      border: 1.5px solid #E9C79B;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-comment:hover { background: #FCEAD2; }
+    .comment-list {
+      max-height: 240px;
+      overflow-y: auto;
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+      text-align: left;
+    }
+    .comment-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      background: #FAF6EC;
+      border: 1px solid #EDE2CE;
+      border-radius: 12px;
+      padding: 8px 10px;
+    }
+    .comment-bird {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      flex-shrink: 0;
+      background: #fff;
+      border-radius: 50%;
+      padding: 2px;
+      border: 1px solid #E6D8C0;
+    }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+    .comment-meta strong { color: var(--brown); font-size: 12px; }
+    .comment-text { font-size: 13px; color: #3E2A16; line-height: 1.45; word-break: break-word; }
+    .comment-form {
+      display: grid;
+      gap: 7px;
+      border-top: 1px solid #EDE2CE;
+      padding-top: 11px;
+      text-align: left;
+    }
+    .comment-form input, .comment-form textarea {
+      font-size: 13px;
+      padding: 8px 10px;
+    }
     .count-badge {
       display: inline-block;
       background: var(--accent);
@@ -556,6 +614,38 @@
   };
 
   let allNests = [];
+  let allComments = [];
+  window._placeMap = {};
+  let activeCommentPlaceKey = null;
+
+  const BIRD_FILES = [
+    "birds/bird_1.png",
+    "birds/bird_2.png",
+    "birds/bird_3.png",
+    "birds/bird_4.png",
+    "birds/bird_5.png",
+    "birds/bird_6.png"
+  ];
+
+  function encodeComment(birdIdx, text) {
+    return `[B${birdIdx}] ${text}`;
+  }
+
+  function decodeComment(c) {
+    const raw = String(c.reason || '');
+    const m = raw.match(/^\[B([1-6])\]\s*([\s\S]*)$/);
+    if (m) {
+      return { birdSrc: BIRD_FILES[parseInt(m[1], 10) - 1], text: m[2] };
+    }
+    const seedStr = String(c.id || c.createdAt || raw);
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) hash = (hash * 31 + seedStr.charCodeAt(i)) >>> 0;
+    return { birdSrc: BIRD_FILES[hash % BIRD_FILES.length], text: raw };
+  }
+
+  function getCommentsForPlace(normName) {
+    return allComments.filter(c => String(c.placeName || '').replace(/\s+/g, '').toLowerCase() === normName);
+  }
 
   const CATEGORIES = [
     { id: "맛집·카페", label: "맛집·카페", color: "#F5C542", emoji: "💛" },
@@ -697,28 +787,37 @@
   }
 
   async function loadNests() {
+    let rawItems = [];
     if (API_URL) {
       try {
         const res = await fetch(API_URL + "?action=list");
         const data = await res.json();
-        allNests = Array.isArray(data.items) ? data.items : [];
+        rawItems = Array.isArray(data.items) ? data.items : [];
       } catch (e) {
-        allNests = getLocalNests();
+        rawItems = getLocalNests();
       }
     } else {
-      allNests = getLocalNests();
+      rawItems = getLocalNests();
       const n = document.getElementById('dbNotice');
       n.style.display = 'block';
       n.innerHTML = '💡 현재는 <strong>체험 모드(내 브라우저 임시 저장)</strong>예요. 구글 시트 웹앱 URL을 연결하면 모든 방문자의 글이 실시간으로 모입니다.';
     }
+    allComments = rawItems.filter(x => x.region === '__COMMENT__');
+    allNests = rawItems.filter(x => x.region !== '__COMMENT__');
     renderPublic();
     if (isAdmin) renderAdmin();
+    if (activeCommentPlaceKey && document.getElementById('commentModal').classList.contains('show')) {
+      renderCommentModalList();
+    }
   }
 
   function renderChips(containerId, current, onPick) {
     const el = document.getElementById(containerId);
-    el.innerHTML = REGIONS.map(r => {
-      const cnt = r === "전체" ? allNests.length : allNests.filter(x => x.region === r).length;
+    const list = containerId === 'adminChips' ? [...REGIONS, '💬 댓글'] : REGIONS;
+    el.innerHTML = list.map(r => {
+      const cnt = r === "전체"
+        ? allNests.length
+        : (r === '💬 댓글' ? allComments.length : allNests.filter(x => x.region === r).length);
       return `<button class="chip ${current === r ? 'active' : ''}" onclick="${onPick}('${r}')">${r} (${cnt})</button>`;
     }).join('');
   }
@@ -783,9 +882,20 @@
 
     const groups = groupByPlace(filtered);
     viewLayer.clearLayers();
+    window._placeMap = {};
 
     groups.forEach(g => {
+      window._placeMap[g.normName] = {
+        normName: g.normName,
+        placeName: g.placeName,
+        region: g.region,
+        area: g.area,
+        lat: g.lat,
+        lng: g.lng
+      };
       const cnt = g.entries.length;
+      const cmts = getCommentsForPlace(g.normName);
+      const cmtLabel = cmts.length > 0 ? `💬 댓글 ${cmts.length}개` : '💬 댓글 달기';
       const latestDec = decodeReason(g.entries[g.entries.length - 1].reason);
       const pinColor = getCatObj(latestDec.catId).color;
       const nestIcon = L.divIcon({
@@ -809,13 +919,14 @@
           `;
         }).join('');
         m.bindPopup(`
-          <div style="min-width:190px;max-width:260px;max-height:240px;overflow-y:auto;font-family:'Noto Sans KR',sans-serif;">
+          <div style="min-width:190px;max-width:260px;max-height:260px;overflow-y:auto;font-family:'Noto Sans KR',sans-serif;">
             <div style="font-size:11px;color:#245943;font-weight:700;">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</div>
             <div style="font-size:14px;font-weight:700;margin:3px 0;">
               ${escapeHtml(g.placeName)}
               ${cnt > 1 ? `<span style="background:#D07D3E;color:#fff;font-size:10.5px;padding:1px 6px;border-radius:999px;margin-left:4px;">${cnt}명 추천</span>` : ''}
             </div>
             ${reasonsHtml}
+            <button type="button" class="btn-comment" style="width:100%;justify-content:center;" onclick="openCommentModal('${g.normName}')">${cmtLabel}</button>
           </div>
         `);
       }
@@ -828,6 +939,8 @@
     }
     listEl.innerHTML = groups.slice().reverse().map(g => {
       const cnt = g.entries.length;
+      const cmts = getCommentsForPlace(g.normName);
+      const cmtLabel = cmts.length > 0 ? `💬 댓글 ${cmts.length}개` : '💬 댓글 달기';
       const stack = g.entries.slice().reverse().map(e => {
         const dec = decodeReason(e.reason);
         const catObj = getCatObj(dec.catId);
@@ -844,6 +957,7 @@
           <span class="nest-item-tag">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</span>
           <h4><img src="${PIN_FILES[decodeReason(g.entries[g.entries.length-1].reason).catId] || 'pins/nest_orange.png'}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px;" />${escapeHtml(g.placeName)}${cnt > 1 ? `<span class="count-badge">${cnt}개의 둥지</span>` : ''}</h4>
           <div class="reason-stack">${stack}</div>
+          <button type="button" class="btn-comment" onclick="event.stopPropagation(); openCommentModal('${g.normName}')">${cmtLabel}</button>
         </div>
       `;
     }).join('');
@@ -871,24 +985,31 @@
 
   function renderAdmin() {
     renderChips('adminChips', adminFilter, 'setAdminFilter');
-    const filtered = adminFilter === "전체" ? allNests : allNests.filter(x => x.region === adminFilter);
+    const isCmtTab = adminFilter === '💬 댓글';
+    const filtered = isCmtTab
+      ? allComments
+      : (adminFilter === "전체" ? allNests : allNests.filter(x => x.region === adminFilter));
     document.getElementById('adminCount').textContent = filtered.length;
     const listEl = document.getElementById('adminList');
     if (!filtered.length) {
-      listEl.innerHTML = '<div class="empty-box">등록된 둥지가 없어요.</div>';
+      listEl.innerHTML = `<div class="empty-box">${isCmtTab ? '등록된 댓글이 없어요.' : '등록된 둥지가 없어요.'}</div>`;
       return;
     }
-    listEl.innerHTML = filtered.slice().reverse().map(it => `
+    listEl.innerHTML = filtered.slice().reverse().map(it => {
+      const bodyText = isCmtTab ? decodeComment(it).text : it.reason;
+      const tagText = isCmtTab ? `💬 댓글 · ${escapeHtml(it.placeName)}` : `${escapeHtml(it.region)} · ${escapeHtml(it.area)}`;
+      return `
       <div class="nest-item">
         <div>
-          <span class="nest-item-tag">${it.region} · ${it.area}</span>
+          <span class="nest-item-tag">${tagText}</span>
           <h4>${escapeHtml(it.placeName)}</h4>
-          <p>${escapeHtml(it.reason)}</p>
+          <p>${escapeHtml(bodyText)}</p>
           <small>by. ${escapeHtml(it.nick || '익명')} · ${(it.createdAt || '').slice(0, 10)}</small>
         </div>
         <button class="btn btn-danger" onclick="deleteNest('${it.id}')">삭제</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   async function deleteNest(id) {
@@ -1102,18 +1223,30 @@
 
     const pvReason = document.getElementById('pvReason');
     pvReason.textContent = r || '추천 이유가 여기에 표시됩니다';
+    // 매번 1~2줄 기본 위치/들여쓰기로 초기화
+    pvReason.style.left = '76px';
+    pvReason.style.textIndent = '38px';
+    pvReason.style.top = '111px';
+    pvReason.style.lineHeight = '32px';
+    pvReason.style.maxHeight = '76px';
     let rSize = 11.8;
     pvReason.style.fontSize = rSize + 'px';
-    pvReason.style.lineHeight = '32px';
+
     // 점선 2줄 간격(32px)에 맞춰 2줄(scrollHeight <= 68) 안에 다 들어가도록 폰트 축소
     while (pvReason.scrollHeight > 68 && rSize > 7.5) {
       rSize -= 0.5;
       pvReason.style.fontSize = rSize + 'px';
     }
-    // 7.5px로도 2줄을 넘길 만큼 아주 긴 문장일 때만 3줄 허용
+    // 7.5px로도 2줄을 넘길 만큼 긴 문장일 때는 '이유 :' 오른쪽으로 블록 정렬해 겹침 방지
     if (pvReason.scrollHeight > 68) {
-      pvReason.style.lineHeight = '1.45';
-      while (pvReason.scrollHeight > 74 && rSize > 6.5) {
+      pvReason.style.left = '112px';
+      pvReason.style.textIndent = '0px';
+      pvReason.style.top = '116px';
+      pvReason.style.lineHeight = '1.42';
+      pvReason.style.maxHeight = '74px';
+      rSize = 9.5;
+      pvReason.style.fontSize = rSize + 'px';
+      while (pvReason.scrollHeight > 72 && rSize > 6.0) {
         rSize -= 0.5;
         pvReason.style.fontSize = rSize + 'px';
       }
@@ -1219,6 +1352,91 @@
     }
   } catch (_) {}
 
+  function openCommentModal(normName) {
+    activeCommentPlaceKey = normName;
+    const info = window._placeMap[normName] || { placeName: normName, region: '', area: '' };
+    document.getElementById('cmtPlaceTitle').textContent = info.placeName || normName;
+    document.getElementById('cmtPlaceSub').textContent = [info.region, info.area].filter(Boolean).join(' · ');
+    renderCommentModalList();
+    document.getElementById('commentModal').classList.add('show');
+  }
+
+  function closeCommentModal() {
+    document.getElementById('commentModal').classList.remove('show');
+    activeCommentPlaceKey = null;
+  }
+
+  function renderCommentModalList() {
+    const cmts = getCommentsForPlace(activeCommentPlaceKey);
+    const box = document.getElementById('cmtListBox');
+    if (!cmts.length) {
+      box.innerHTML = '<div class="empty-box" style="padding:18px 10px;">아직 첫 번째 철새 댓글이 없어요.<br/>이 장소에 대한 한마디를 남겨보세요!</div>';
+      return;
+    }
+    box.innerHTML = cmts.slice().reverse().map(c => {
+      const dec = decodeComment(c);
+      const dt = String(c.createdAt || '').slice(0, 10);
+      return `
+        <div class="comment-item">
+          <img class="comment-bird" src="${dec.birdSrc}" alt="철새" />
+          <div class="comment-body">
+            <div class="comment-meta"><strong>${escapeHtml(c.nick || '지나가는 철새')}</strong>${dt ? ` · ${dt}` : ''}</div>
+            <div class="comment-text">${escapeHtml(dec.text)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  let isSubmittingComment = false;
+  async function submitComment() {
+    if (isSubmittingComment || !activeCommentPlaceKey) return;
+    const text = document.getElementById('cmtText').value.trim();
+    const nick = document.getElementById('cmtNick').value.trim() || '지나가는 철새';
+    if (!text) {
+      alert('댓글 내용을 입력해 주세요!');
+      return;
+    }
+    isSubmittingComment = true;
+    const btn = document.getElementById('cmtSubmitBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '등록 중...'; }
+
+    const info = window._placeMap[activeCommentPlaceKey] || {};
+    const birdIdx = Math.floor(Math.random() * BIRD_FILES.length) + 1;
+    const item = {
+      id: "c_" + Date.now(),
+      action: "add",
+      region: "__COMMENT__",
+      area: info.area || "",
+      placeName: activeCommentPlaceKey,
+      reason: encodeComment(birdIdx, text),
+      nick,
+      lat: info.lat || "",
+      lng: info.lng || "",
+      createdAt: new Date().toISOString()
+    };
+
+    allComments.push(item);
+    if (!API_URL) {
+      const combined = [...allNests, ...allComments];
+      saveLocalNests(combined);
+    }
+    document.getElementById('cmtText').value = '';
+    renderCommentModalList();
+    renderPublic();
+    if (isAdmin) renderAdmin();
+
+    if (API_URL) {
+      try {
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify(item) });
+        await loadNests();
+      } catch (_) {}
+    }
+
+    isSubmittingComment = false;
+    if (btn) { btn.disabled = false; btn.textContent = '💬 댓글 남기기'; }
+  }
+
   loadNests();
 </script>
 
@@ -1236,6 +1454,24 @@
       <div style="font-size:13px;color:#4A3520;line-height:1.5;">내가 잘 아는 동네의 최애 장소를 ‘둥지’로 남겨주세요. 내가 남긴 둥지가 다른 철새에게 따뜻한 쉼터가 되고, 우리도 서로의 둥지를 보며 낯선 동네를 여행할 수 있어요.</div>
     </div>
     <button class="btn" style="width:100%;padding:13px;font-size:15px;" onclick="closeIntroModal()">좋아요, 내 둥지 남기러 가기</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="commentModal" onclick="if(event.target===this) closeCommentModal()">
+  <div class="modal-box" style="max-width:420px;text-align:left;padding:22px 18px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div>
+        <div id="cmtPlaceSub" style="font-size:11.5px;color:#245943;font-weight:700;"></div>
+        <h3 id="cmtPlaceTitle" style="margin:2px 0 0;font-size:17px;">장소 댓글</h3>
+      </div>
+      <button type="button" class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="closeCommentModal()">닫기</button>
+    </div>
+    <div class="comment-list" id="cmtListBox"></div>
+    <div class="comment-form">
+      <input type="text" id="cmtNick" placeholder="닉네임 (선택 · 미입력 시 지나가는 철새)" />
+      <textarea id="cmtText" rows="2" placeholder="이 장소에 대한 한마디나 팁을 남겨주세요!"></textarea>
+      <button type="button" class="btn" id="cmtSubmitBtn" style="width:100%;padding:11px;font-size:14px;" onclick="submitComment()">💬 댓글 남기기</button>
+    </div>
   </div>
 </div>
 
