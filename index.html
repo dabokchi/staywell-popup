@@ -672,15 +672,19 @@
   }
 
   const CATEGORIES = [
-    { id: "맛집·카페", label: "맛집·카페", color: "#F5C542", emoji: "💛" },
-    { id: "산책·자연", label: "산책·자연", color: "#4CAF6A", emoji: "💚" },
-    { id: "작업·독서·몰입", label: "작업·독서·몰입", color: "#4A90E2", emoji: "💙" },
+    { id: "식사·카페", label: "식사·카페", color: "#F5C542", emoji: "💛" },
+    { id: "산책·휴식", label: "산책·휴식", color: "#4CAF6A", emoji: "💚" },
+    { id: "공부·작업", label: "공부·작업", color: "#4A90E2", emoji: "💙" },
     { id: "운동·건강", label: "운동·건강", color: "#9B6BCE", emoji: "💜" },
-    { id: "나만의 아지트", label: "나만의 아지트", color: "#E68A3E", emoji: "🧡" }
+    { id: "숨은 아지트", label: "숨은 아지트", color: "#E68A3E", emoji: "🧡" }
   ];
   const LEGACY_CAT_MAP = {
-    "책·문화·몰입": "작업·독서·몰입",
-    "취미·놀거리": "운동·건강"
+    "맛집·카페": "식사·카페",
+    "산책·자연": "산책·휴식",
+    "책·문화·몰입": "공부·작업",
+    "작업·독서·몰입": "공부·작업",
+    "취미·놀거리": "운동·건강",
+    "나만의 아지트": "숨은 아지트"
   };
   let selectedCat = CATEGORIES[0].id;
 
@@ -694,11 +698,11 @@
   }
 
   const PIN_FILES = {
-    "맛집·카페": "pins/nest_yellow.png?v=5",
-    "산책·자연": "pins/nest_green.png?v=5",
-    "작업·독서·몰입": "pins/nest_blue.png?v=5",
+    "식사·카페": "pins/nest_yellow.png?v=5",
+    "산책·휴식": "pins/nest_green.png?v=5",
+    "공부·작업": "pins/nest_blue.png?v=5",
     "운동·건강": "pins/nest_purple.png?v=5",
-    "나만의 아지트": "pins/nest_orange.png?v=5"
+    "숨은 아지트": "pins/nest_orange.png?v=5"
   };
   function nestPinImg(catId, cnt) {
     const src = PIN_FILES[catId] || "pins/nest_orange.png";
@@ -746,7 +750,7 @@
         return { catId: mapped, text: m[2] };
       }
     }
-    return { catId: "나만의 아지트", text: s };
+    return { catId: "숨은 아지트", text: s };
   }
 
   function renderCatButtons() {
@@ -1060,9 +1064,23 @@
   }
 
   function exportCSV() {
-    const filtered = adminFilter === "전체" ? allNests : allNests.filter(x => x.region === adminFilter);
-    const header = ["권역", "동네", "장소명", "추천이유", "닉네임", "위도", "경도", "등록일"];
-    const rows = filtered.map(x => [x.region, x.area, x.placeName, x.reason, x.nick, x.lat, x.lng, x.createdAt].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(","));
+    const filtered = adminFilter === "전체"
+      ? allNests
+      : (adminFilter === '💬 철새 한마디' ? allComments : allNests.filter(x => x.region === adminFilter));
+    const isCmt = adminFilter === '💬 철새 한마디';
+    const header = isCmt
+      ? ["유형", "장소명", "댓글내용", "닉네임", "위도", "경도", "등록일"]
+      : ["권역", "동네", "장소명", "분류", "추천이유", "닉네임", "위도", "경도", "등록일"];
+    const rows = filtered.map(x => {
+      if (isCmt) {
+        const dc = decodeComment(x);
+        return ["철새 한마디", x.placeName, dc.text, x.nick, x.lat, x.lng, x.createdAt]
+          .map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(",");
+      }
+      const dec = decodeReason(x.reason);
+      return [x.region, x.area, x.placeName, dec.catId, dec.text, x.nick, x.lat, x.lng, x.createdAt]
+        .map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(",");
+    });
     const csv = "\uFEFF" + header.join(",") + "\n" + rows.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
@@ -1211,9 +1229,9 @@
 
   function autoCatFromKakao(catName) {
     if (!catName) return;
-    if (catName.includes('음식') || catName.includes('카페')) selectCat('맛집·카페');
-    else if (catName.includes('관광') || catName.includes('공원')) selectCat('산책·자연');
-    else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('작업·독서·몰입');
+    if (catName.includes('음식') || catName.includes('카페')) selectCat('식사·카페');
+    else if (catName.includes('관광') || catName.includes('공원')) selectCat('산책·휴식');
+    else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('공부·작업');
     else if (catName.includes('병원') || catName.includes('약국') || catName.includes('체육') || catName.includes('스포츠')) selectCat('운동·건강');
   }
   function pickResult(lat, lon, name, fullAddr, catName) {
