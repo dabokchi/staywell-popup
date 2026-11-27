@@ -786,8 +786,10 @@
   // 네이버 지도 바로가기 주소: 권역 앞 2단어(시/도 + 시군구) + 장소명으로 검색
   function naverMapUrl(area, placeName) {
     const name = String(placeName || '').trim();
-    const words = String(area || '').trim().split(/\s+/).filter(Boolean);
-    const region = words.slice(0, 2).join(' ');
+    const rawArea = String(area || '').trim();
+    // 쉼표로 뒤섞여 들어온 동네 표기는 행정구역으로 쓸 수 없어 장소명만 검색
+    const words = rawArea.replace(/,/g, ' ').split(/\s+/).filter(Boolean);
+    const region = rawArea.indexOf(',') === -1 ? words.slice(0, 2).join(' ') : '';
     const q = (region ? `${region} ${name}` : name).trim();
     if (!q) return '';
     return `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
