@@ -371,12 +371,13 @@
     }
     .btn-comment:hover { background: #FCEAD2; }
     .btn-kakao {
-      background: #FEE500;
-      color: #3C1E1E;
-      border-color: #E5CE00;
+      background: #E8F1EB;
+      color: #245943;
+      border: 1px solid #C2D8C8;
+      font-weight: 600;
       text-decoration: none;
     }
-    .btn-kakao:hover { background: #F5DC00; }
+    .btn-kakao:hover { background: #DCE9E0; border-color: #B3CDBA; }
     .nest-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1006,8 +1007,8 @@
             </div>
             ${reasonsHtml}
             <div class="popup-actions">
-              ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵에서 보기</a>` : ''}
               <button type="button" class="btn-comment" onclick="openCommentModal('${g.normName}')">${cmtLabel}</button>
+              ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵에서 보기</a>` : ''}
             </div>
           </div>
         `);
@@ -1041,8 +1042,8 @@
           <h4><img src="${PIN_FILES[decodeReason(g.entries[g.entries.length-1].reason).catId] || 'pins/nest_orange.png'}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px;" />${escapeHtml(g.placeName)}${cnt > 1 ? `<span class="count-badge">${cnt}개의 둥지</span>` : ''}</h4>
           <div class="reason-stack">${stack}</div>
           <div class="nest-actions">
-            ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵으로 보기</a>` : ''}
             <button type="button" class="btn-comment" onclick="event.stopPropagation(); openCommentModal('${g.normName}')">${cmtLabel}</button>
+            ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵으로 보기</a>` : ''}
           </div>
         </div>
       `;
