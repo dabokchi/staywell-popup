@@ -783,18 +783,14 @@
     return { catId: "숨은 아지트", text: s };
   }
 
-  // 카카오맵 바로가기 주소: 저장된 카카오 장소 URL 우선 → 좌표 링크 → 이름 검색 링크
-  function kakaoMapUrl(item) {
-    const direct = String((item && (item.placeUrl || item.kakaoUrl)) || '').trim();
-    if (/^https?:\/\//i.test(direct)) return direct;
-    const name = String((item && item.placeName) || '').trim();
-    const lat = parseFloat(item && item.lat);
-    const lng = parseFloat(item && item.lng);
-    if (name && !isNaN(lat) && !isNaN(lng)) {
-      return `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
-    }
-    if (name) return `https://map.kakao.com/?q=${encodeURIComponent(name)}`;
-    return '';
+  // 네이버 지도 바로가기 주소: 권역 앞 2단어(시/도 + 시군구) + 장소명으로 검색
+  function naverMapUrl(area, placeName) {
+    const name = String(placeName || '').trim();
+    const words = String(area || '').trim().split(/\s+/).filter(Boolean);
+    const region = words.slice(0, 2).join(' ');
+    const q = (region ? `${region} ${name}` : name).trim();
+    if (!q) return '';
+    return `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
   }
 
   function renderCatButtons() {
@@ -978,7 +974,7 @@
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
       const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
-      const kUrl = kakaoMapUrl(g);
+      const kUrl = naverMapUrl(g.area, g.placeName);
       const latestDec = decodeReason(g.entries[g.entries.length - 1].reason);
       const pinColor = getCatObj(latestDec.catId).color;
       const nestIcon = L.divIcon({
@@ -1011,7 +1007,7 @@
             ${reasonsHtml}
             <div class="popup-actions">
               <button type="button" class="btn-comment" onclick="openCommentModal('${g.normName}')">${cmtLabel}</button>
-              ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵에서 보기</a>` : ''}
+              ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 지도로 보기</a>` : ''}
             </div>
           </div>
         `);
@@ -1027,7 +1023,7 @@
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
       const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
-      const kUrl = kakaoMapUrl(g);
+      const kUrl = naverMapUrl(g.area, g.placeName);
       const stack = g.entries.slice().reverse().map(e => {
         const dec = decodeReason(e.reason);
         const catObj = getCatObj(dec.catId);
@@ -1046,7 +1042,7 @@
           <div class="reason-stack">${stack}</div>
           <div class="nest-actions">
             <button type="button" class="btn-comment" onclick="event.stopPropagation(); openCommentModal('${g.normName}')">${cmtLabel}</button>
-            ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵으로 보기</a>` : ''}
+            ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 지도로 보기</a>` : ''}
           </div>
         </div>
       `;
