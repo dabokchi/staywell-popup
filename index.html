@@ -370,6 +370,32 @@
       font-family: inherit;
     }
     .btn-comment:hover { background: #FCEAD2; }
+    .btn-kakao {
+      background: #FEE500;
+      color: #3C1E1E;
+      border-color: #E5CE00;
+      text-decoration: none;
+    }
+    .btn-kakao:hover { background: #F5DC00; }
+    .nest-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 9px;
+    }
+    .nest-actions .btn-comment { margin-top: 0; }
+    .popup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 9px;
+    }
+    .popup-actions .btn-comment {
+      width: 100%;
+      justify-content: center;
+      margin-top: 0;
+    }
     .comment-list {
       max-height: 240px;
       overflow-y: auto;
@@ -753,6 +779,20 @@
     return { catId: "숨은 아지트", text: s };
   }
 
+  // 카카오맵 바로가기 주소: 저장된 카카오 장소 URL 우선 → 좌표 링크 → 이름 검색 링크
+  function kakaoMapUrl(item) {
+    const direct = String((item && (item.placeUrl || item.kakaoUrl)) || '').trim();
+    if (/^https?:\/\//i.test(direct)) return direct;
+    const name = String((item && item.placeName) || '').trim();
+    const lat = parseFloat(item && item.lat);
+    const lng = parseFloat(item && item.lng);
+    if (name && !isNaN(lat) && !isNaN(lng)) {
+      return `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
+    }
+    if (name) return `https://map.kakao.com/?q=${encodeURIComponent(name)}`;
+    return '';
+  }
+
   function renderCatButtons() {
     document.getElementById('catGrid').innerHTML = CATEGORIES.map(c => `
       <button type="button" class="cat-btn ${selectedCat === c.id ? 'active' : ''}" onclick="selectCat('${c.id}')">
@@ -884,6 +924,7 @@
       });
       if (found) {
         found.entries.push(it);
+        if (!found.placeUrl && (it.placeUrl || it.kakaoUrl)) found.placeUrl = it.placeUrl || it.kakaoUrl;
       } else {
         groups.push({
           normName,
@@ -892,6 +933,7 @@
           placeName: it.placeName,
           lat,
           lng,
+          placeUrl: it.placeUrl || it.kakaoUrl || '',
           entries: [it]
         });
       }
@@ -926,11 +968,13 @@
         region: g.region,
         area: g.area,
         lat: g.lat,
-        lng: g.lng
+        lng: g.lng,
+        placeUrl: g.placeUrl || ''
       };
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
       const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
+      const kUrl = kakaoMapUrl(g);
       const latestDec = decodeReason(g.entries[g.entries.length - 1].reason);
       const pinColor = getCatObj(latestDec.catId).color;
       const nestIcon = L.divIcon({
@@ -961,7 +1005,10 @@
               ${cnt > 1 ? `<span style="background:#D07D3E;color:#fff;font-size:10.5px;padding:1px 6px;border-radius:999px;margin-left:4px;">${cnt}명 추천</span>` : ''}
             </div>
             ${reasonsHtml}
-            <button type="button" class="btn-comment" style="width:100%;justify-content:center;" onclick="openCommentModal('${g.normName}')">${cmtLabel}</button>
+            <div class="popup-actions">
+              ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵에서 보기</a>` : ''}
+              <button type="button" class="btn-comment" onclick="openCommentModal('${g.normName}')">${cmtLabel}</button>
+            </div>
           </div>
         `);
       }
@@ -976,6 +1023,7 @@
       const cnt = g.entries.length;
       const cmts = getCommentsForPlace(g.normName);
       const cmtLabel = `💬 철새 한마디 (${cmts.length})`;
+      const kUrl = kakaoMapUrl(g);
       const stack = g.entries.slice().reverse().map(e => {
         const dec = decodeReason(e.reason);
         const catObj = getCatObj(dec.catId);
@@ -992,7 +1040,10 @@
           <span class="nest-item-tag">${escapeHtml(g.region)} · ${escapeHtml(g.area)}</span>
           <h4><img src="${PIN_FILES[decodeReason(g.entries[g.entries.length-1].reason).catId] || 'pins/nest_orange.png'}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px;" />${escapeHtml(g.placeName)}${cnt > 1 ? `<span class="count-badge">${cnt}개의 둥지</span>` : ''}</h4>
           <div class="reason-stack">${stack}</div>
-          <button type="button" class="btn-comment" onclick="event.stopPropagation(); openCommentModal('${g.normName}')">${cmtLabel}</button>
+          <div class="nest-actions">
+            ${kUrl ? `<a class="btn-comment btn-kakao" href="${escapeHtml(kUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">📍 카카오맵으로 보기</a>` : ''}
+            <button type="button" class="btn-comment" onclick="event.stopPropagation(); openCommentModal('${g.normName}')">${cmtLabel}</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -1195,7 +1246,7 @@
         const addr = it.road_address_name || it.address_name || '';
         const cat = it.category_group_name ? ` · ${it.category_group_name}` : '';
         return `
-          <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)}, ${JSON.stringify(it.category_group_name || "")})'>
+          <div class="sr-item" onclick='pickResult(${it.y}, ${it.x}, ${JSON.stringify(it.place_name)}, ${JSON.stringify(addr)}, ${JSON.stringify(it.category_group_name || "")}, ${JSON.stringify(it.place_url || "")})'>
             <strong>${escapeHtml(it.place_name)}</strong><span class="sr-sub">${escapeHtml(cat)}</span>
             <div class="sr-sub">${escapeHtml(addr)}</div>
           </div>
@@ -1234,8 +1285,10 @@
     else if (catName.includes('문화') || catName.includes('학교') || catName.includes('도서')) selectCat('공부·작업');
     else if (catName.includes('병원') || catName.includes('약국') || catName.includes('체육') || catName.includes('스포츠')) selectCat('운동·건강');
   }
-  function pickResult(lat, lon, name, fullAddr, catName) {
+  let pickedPlaceUrl = '';
+  function pickResult(lat, lon, name, fullAddr, catName, placeUrl) {
     if (catName) autoCatFromKakao(catName);
+    pickedPlaceUrl = placeUrl || '';
     document.getElementById('searchResults').style.display = 'none';
     setPin(parseFloat(lat), parseFloat(lon), `${name} (${fullAddr})`);
     const r = guessRegion(fullAddr);
@@ -1335,6 +1388,25 @@
 
   let isSubmitting = false;
 
+  // 구글 시트(Apps Script) 스키마를 건드리지 않도록 저장하는 기존 필드만 골라 보낸다
+  function postNest(item) {
+    return fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        id: item.id,
+        action: item.action,
+        region: item.region,
+        area: item.area,
+        placeName: item.placeName,
+        reason: item.reason,
+        nick: item.nick,
+        lat: item.lat,
+        lng: item.lng,
+        createdAt: item.createdAt
+      })
+    });
+  }
+
   async function submitForm() {
     if (isSubmitting) return;
 
@@ -1363,6 +1435,7 @@
       region, area, placeName, reason: encodeReason(selectedCat, reason), nick,
       lat: marker ? marker.getLatLng().lat : center[0],
       lng: marker ? marker.getLatLng().lng : center[1],
+      placeUrl: pickedPlaceUrl || '',
       createdAt: new Date().toISOString()
     };
 
@@ -1382,12 +1455,13 @@
     document.getElementById('placeName').value = '';
     document.getElementById('reason').value = '';
     document.getElementById('nick').value = '';
+    pickedPlaceUrl = '';
     updatePreview();
 
     // 2. 백그라운드에서 구글 시트 저장 및 동기화
     if (API_URL) {
       try {
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(item) });
+        await postNest(item);
         await loadNests();
       } catch (_) {}
     }
@@ -1506,7 +1580,7 @@
 
     if (API_URL) {
       try {
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(item) });
+        await postNest(item);
         await loadNests();
       } catch (_) {}
     }
