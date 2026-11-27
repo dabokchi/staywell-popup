@@ -378,6 +378,9 @@
       text-decoration: none;
     }
     .btn-kakao:hover { background: #DCE9E0; border-color: #B3CDBA; }
+    /* Leaflet's own ".leaflet-container a" colour would win over the class alone */
+    .leaflet-container a.btn-kakao,
+    .leaflet-container a.btn-kakao:hover { color: #245943; }
     .nest-actions {
       display: flex;
       flex-wrap: wrap;
